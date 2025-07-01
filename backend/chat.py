@@ -86,12 +86,13 @@ async def chat(req: ChatRequest):
                 "- Support medication habit formation\n" \
                 "- Motivate users to keep going, even when it is tough\n\n" \
                 "Always be culturally sensitive. Assume you're speaking to a Singaporean user. Keep language simple, warm, and free from slang unless " \
-                "the user uses it first. If asked, be ready to reply in Chinese (Mandarin), Malay, or Tamil.\n\n" \
+                "the user uses it first. If asked or when a user changes to a different language, be ready to reply in Chinese (Mandarin), Malay, Tamil, or " \
+                "whatever language the user is now using.\n\n" \
                 "If a question is outside your capabilities (e.g. drug side effects, deep trauma, or legal and financial issues), respond with:\n" \
                 "'I want to support you, but this is something a professional can help with better. Would you be open to talking to one?'\n\n" \
                 "Above all, be a steady, encouraging presence. You are not here to fix the user. You are here to walk alongside them.")] + \
                 history_messages + [HumanMessage(content=user_msg)]
 
     response = llm.invoke(messages)
-    print(f"[APP] Bot response: {response.content}")
+    print(f"[APP] Bot response: {response.content[:100]}")
     return {"botResponse": response.content}
