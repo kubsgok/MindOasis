@@ -1,29 +1,45 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
+import React, { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
+  const [isLoading, setIsLoading]   = useState(true);
+  const [loggedIn,  setLoggedIn]    = useState(false);
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
+  useEffect(() => {
+    // on mount, check AsyncStorage for your login flag
+    AsyncStorage.getItem('logged_in')
+      .then(val => setLoggedIn(val === 'true'))
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  if (isLoading) {
+    // spinner while we determine login state
+    return (
+      <View style={styles.loader}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      {!loggedIn ? (
+        // if not logged in, mount Login + SignUp from `app/login.tsx` & `app/signup.tsx`
+        <>
+          <Stack.Screen name="login"  />
+          <Stack.Screen name="signup" />
+        </>
+      ) : (
+        // once logged in, mount your entire TabLayout (in app/(tabs)/_layout.tsx)
+        <Stack.Screen name="(tabs)" />
+      )}
+    </Stack>
   );
 }
+
+const styles = StyleSheet.create({
+  loader: { flex:1, justifyContent:'center', alignItems:'center' }
+});
