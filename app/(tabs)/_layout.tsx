@@ -1,6 +1,7 @@
+import React, { useState, useEffect } from 'react';
 import { Tabs } from 'expo-router';
-import React from 'react';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -10,22 +11,32 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const [showTabs, setShowTabs] = useState<boolean>(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('logged_in')
+      .then(val => setShowTabs(val === 'true'))
+      .catch(console.error);
+  }, []);
+
+  const baseTabBarStyle = Platform.select({
+    ios: { position: 'absolute' },
+    default: {},
+  });
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
+        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
-      }}>
+        tabBarStyle: [
+          baseTabBarStyle,
+          !showTabs && { display: 'none' },
+        ],
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
