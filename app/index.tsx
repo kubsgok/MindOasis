@@ -1,12 +1,3 @@
-<<<<<<< Updated upstream
-import { Redirect } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
-
-export default function HomeScreen() {
-  return (
-    <View style={styles.container}>
-      <Text>Welcome to Mind Oasis!</Text>
-=======
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Redirect } from "expo-router";
 import React, { useEffect, useState } from 'react';
@@ -66,15 +57,12 @@ export default function HomeScreen() {
 
 return (
     <View style={styles.container}>
->>>>>>> Stashed changes
       <Redirect href={"/(tabs)/home"} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-<<<<<<< Updated upstream
-=======
   authContainer: { flex: 1, backgroundColor: '#d96922' },
   toggleContainer: {
     flexDirection: 'row',
@@ -92,7 +80,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
->>>>>>> Stashed changes
   container: {
     flex: 1,
     justifyContent: "center",
