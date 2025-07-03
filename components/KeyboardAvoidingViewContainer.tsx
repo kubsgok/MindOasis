@@ -16,7 +16,7 @@ export default function KeyboardAvoidingViewContainer({
         <KeyboardAvoidingView
             style={{flex: 1}}
             behavior="padding"
-            keyboardVerticalOffset={90}
+            keyboardVerticalOffset={73}
         >
         { children }
         </KeyboardAvoidingView>

@@ -1,7 +1,9 @@
 import KeyboardAvoidingViewContainer from "@/components/KeyboardAvoidingViewContainer";
+import { IconSymbol } from '@/components/ui/IconSymbol';
 import { BACKEND_API_HOST } from "@env";
 import { useState } from "react";
 import { Keyboard, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+
 type Message = {
     sender: "user" | "bot";
     text: string;
@@ -10,6 +12,13 @@ type Message = {
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>("")
+  const [textInputHeight, setTextInputHeight] = useState(60)
+
+  const handleContentSizeChange = (event: {
+    nativeEvent: { contentSize: { height: number }};
+  }) => {
+    setTextInputHeight(Math.max(event.nativeEvent.contentSize.height, 40))
+  };
 
   const handleSubmit = async () => {
     setInput("");
@@ -73,19 +82,26 @@ export default function Chat() {
 
         <View style={styles.inputContainer}>
           <TextInput
-            style={styles.textbox}
+            multiline
+            style={{
+              height: textInputHeight,
+              flex: 1,
+              borderRadius: 10,
+              backgroundColor: "#FFFFFF",
+              padding: 12,
+            }}
             placeholder="Type a message..."
             value={ input }
             onChangeText={ setInput }
+            onContentSizeChange={ handleContentSizeChange }
             onSubmitEditing={ handleSubmit }
-            returnKeyType="send"
           />
 
           <TouchableOpacity
             style={styles.button}
             onPress={ handleSubmit }
           >
-            <Text style={styles.buttonText}>Send</Text>
+            <IconSymbol size={20} name="paperplane.fill" color="#060256" />
           </TouchableOpacity>
         </View>
         
@@ -127,18 +143,20 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#060256",
     padding: 10,
-  },
-  textbox: {
-    flex: 1,
+    height: 80,
   },
   button: {
-    backgroundColor: "#060256",
+    backgroundColor: "#FFFFFF",
     paddingVertical: 12,
     paddingHorizontal: 15,
-    borderRadius: 8,
+    borderRadius: 24,
+    height: 40,
+    width: 40,
+    justifyContent: "center",
     alignItems: "center",
+    marginLeft: 5,
   },
   buttonText: {
     color: "#FFFFFF",
