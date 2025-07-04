@@ -43,11 +43,10 @@ export default function MoreInfoPage() {
     try {
       const userId = await AsyncStorage.getItem('user_id');
       if (userId) {
-        // await AirtableService.updateConditions(userId, [ 'Anxiety', 'Depression' ]);
         await AirtableService.updateConditions(userId, conditions);
       }
-      // navigate to next screen
-      // router.replace('/choose-avatar');
+      // navigate to the home tab
+      router.replace('/(tabs)/home');
     } catch (e) {
       console.error(e);
       setError('Failed to save conditions.');
