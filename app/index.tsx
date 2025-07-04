@@ -13,6 +13,13 @@ export default function HomeScreen() {
   const [initialized, setInitialized] = useState<boolean>(false);
   const [activeTab, setActiveTab]     = useState<'login' | 'signup'>('login');
 
+  // // Uncomment to clear login state
+  // useEffect(() => {
+  //   AsyncStorage.clear().then(() => {
+  //     console.log("AsyncStorage cleared!");
+  //   });
+  // }, []);
+
   useEffect(() => {
     AsyncStorage.multiGet(['logged_in', 'user_id'])
       .then(results => {
@@ -57,7 +64,7 @@ export default function HomeScreen() {
 
 return (
     <View style={styles.container}>
-      <Redirect href={"/(tabs)/home"} />
+      <Redirect href={"./(tabs)/home"} />
     </View>
   );
 }

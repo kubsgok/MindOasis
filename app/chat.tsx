@@ -67,10 +67,10 @@ export default function Chat() {
       <View style={styles.container}>
         <View style={styles.headerContainer}>
             <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => router.push("./(tabs)/home")}
+              style={styles.backButton}
+              onPress={() => router.push("./(tabs)/home")}
             >
-                <Ionicons name="close" size={30} color="#FFFFFF" />
+              <Ionicons name="close" size={30} color="#FFFFFF" />
             </TouchableOpacity>
 
             <View style={styles.titleContainer}>
