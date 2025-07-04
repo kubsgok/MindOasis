@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import AirtableService from '../airtable';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AirtableService from '../airtable';
 
 interface LoginProps {
   setLoggedIn: (val: string) => void;
@@ -43,63 +43,65 @@ const LoginScreen: React.FC<LoginProps> = ({ setLoggedIn, setUserId, onShowSignU
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome!</Text>
-      <Image source={require('../assets/images/cat.png')} style={styles.avatar} />
+    <ScrollView>
+      <View style={styles.container}>
+        <Text style={styles.title}>Welcome!</Text>
+        <Image source={require('../assets/images/cat.png')} style={styles.avatar} />
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+        {!!error && <Text style={styles.error}>{error}</Text>}
 
-      <Text style={styles.label}>Email:</Text>
-      <View style={styles.inputContainer}>
-        <MaterialCommunityIcons name="email-outline" size={20} color="#999" style={styles.icon} />
-        <TextInput
-          style={styles.input}
-          placeholder="enter your email"
-          placeholderTextColor="#777"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
-      </View>
+        <Text style={styles.label}>Email:</Text>
+        <View style={styles.inputContainer}>
+          <MaterialCommunityIcons name="email-outline" size={20} color="#999" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="enter your email"
+            placeholderTextColor="#777"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </View>
 
-      <Text style={styles.label}>Password:</Text>
-      <View style={styles.inputContainer}>
-        <MaterialCommunityIcons name="lock-outline" size={20} color="#999" style={styles.icon} />
-        <TextInput
-          style={styles.input}
-          placeholder="enter your password"
-          placeholderTextColor="#777"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-      </View>
+        <Text style={styles.label}>Password:</Text>
+        <View style={styles.inputContainer}>
+          <MaterialCommunityIcons name="lock-outline" size={20} color="#999" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="enter your password"
+            placeholderTextColor="#777"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+        </View>
 
-      <TouchableOpacity onPress={() => {/* TODO: navigate to Forgot Password */}}>
-        <Text style={styles.forgot}>Forgot Password?</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Log In</Text>
-      </TouchableOpacity>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Don’t have an account? </Text>
-        <TouchableOpacity onPress={onShowSignUp}>
-          <Text style={styles.link}>Sign up</Text>
+        <TouchableOpacity onPress={() => {/* TODO: navigate to Forgot Password */}}>
+          <Text style={styles.forgot}>Forgot Password?</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>Log In</Text>
+        </TouchableOpacity>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Don't have an account? </Text>
+          <TouchableOpacity onPress={onShowSignUp}>
+            <Text style={styles.link}>Sign up</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#d96922',
     paddingHorizontal: 24,
-    justifyContent: 'center',
+    paddingVertical: 80,
+    paddingBottom: 200,
   },
   title: {
     fontSize: 32,
