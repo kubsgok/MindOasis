@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Stack } from 'expo-router';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Stack } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 export default function RootLayout() {
   const [isLoading, setIsLoading]   = useState(true);
