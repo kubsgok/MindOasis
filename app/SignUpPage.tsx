@@ -34,8 +34,13 @@ const SignUpPage: React.FC<SignUpProps> = ({ setLoggedIn, setUserId, onShowLogin
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
 
   const handleContinue = async () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!name || !dob || !email || !password) {
       setError('All fields are required.');
+      return;
+    }
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address.');
       return;
     }
     try {
@@ -118,10 +123,7 @@ const SignUpPage: React.FC<SignUpProps> = ({ setLoggedIn, setUserId, onShowLogin
               value={date}
               mode="date"
               display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-              onChange={(e, d) => {
-                setShowDatePicker(false);
-                onChangeDate(e, d);
-              }}
+              onChange={onChangeDate}
               textColor="#000"             // ensure dark text on iOS
               themeVariant="light"          // ensure light theme on iOS
             />
