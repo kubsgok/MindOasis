@@ -1,11 +1,13 @@
 import axios from "axios";
 
 const BASE_ID = "applqO7LmDa1HLTEs";
-const TABLE_ID = "tbl0LJPveJGeu7SK2";
-const API_TOKEN = "patnIDtcJiejdkJNV.8f5783831e933f6c610d4e3c457102bc19eed9e05562bda499d60c5582249f98";
+const USER_TABLE_ID = "tbl0LJPveJGeu7SK2";
+const MED_TABLE_ID = "tblXldXDqZIrFgyTm";
+const API_TOKEN = "patI8m8TdxXWzYg4Y.458904d2c40c330ec243a55e51a3439cd9983fe73ad66111f08ed10cb567e5b6";
 
 // Base URL for Airtable API
-const AIRTABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`;
+const AIRTABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${USER_TABLE_ID}`;
+const MED_TABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${MED_TABLE_ID}`;
 
 const AirtableService = {
   /**
