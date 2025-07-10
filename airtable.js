@@ -185,6 +185,22 @@ const AirtableService = {
       return null;
     }
   },
+
+  /**
+   * Delete a medication record
+   */
+  deleteMedication: async (recordId) => {
+    try {
+      const url = `${MED_TABLE_URL}/${recordId}`;
+      const response = await axios.delete(url, {
+        headers: { Authorization: `Bearer ${API_TOKEN}` },
+      });
+      return response.status === 200;
+    } catch (e) {
+      console.error("Error deleting medication: ", e);
+      return false;
+    }
+  },
 };
 
 export default AirtableService;

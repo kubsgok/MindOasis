@@ -126,6 +126,18 @@ export default function MedicationsTab() {
     }
   };
 
+  const deleteMedication = async (medToDeleteId: string) => {
+    try {
+      setMedications(medications.filter((med) => med.id !== medToDeleteId));
+      setShowMedModal(false);
+
+      // Delete medication from Airtable
+      await AirtableService.deleteMedication(medToDeleteId);
+    } catch (err) {
+      console.error("Failed to delete medication: ", err);
+    }
+  };
+
   const pickImageCamera = async () => {
 
     try {
@@ -262,10 +274,10 @@ export default function MedicationsTab() {
                 <Ionicons name="close" size={30} color="white" />
               </TouchableOpacity>
               <View style={{ flexDirection: "row" }}>
-                <TouchableOpacity style={{ paddingRight: 5 }} onPress={ pickImageCamera }>
+                <TouchableOpacity style={{ paddingRight: 5 }} onPress={pickImageCamera}>
                   <Ionicons name="camera" size={30} color="white" />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={ pickImageGallery }>
+                <TouchableOpacity onPress={pickImageGallery}>
                   <Ionicons name="image" size={30} color="white" />
                 </TouchableOpacity>
               </View>
@@ -307,19 +319,19 @@ export default function MedicationsTab() {
               onChangeText={setMedNotes}
             />
             <View style={{ alignItems: "center", marginVertical: 12 }}>
-              <TouchableOpacity style={styles.modalAddMedButton} onPress={addOrUpdateMedication}>
-                <Text style={styles.modalAddMedButtonText}>
+              <TouchableOpacity style={styles.modalButton} onPress={addOrUpdateMedication}>
+                <Text style={styles.modalButtonText}>
                   {medToEditId ? "Save" : "Add"}
                 </Text>
               </TouchableOpacity>
+              {medToEditId && (
+                  <TouchableOpacity style={styles.modalButton} onPress={() => deleteMedication(medToEditId)}>
+                    <Text style={styles.modalButtonText}>Delete</Text>
+                  </TouchableOpacity>
+                )
+              }
             </View>
-            {loading ? (
-                <ActivityIndicator />
-              ) : (
-                <>
-                </>
-              )
-            }
+            {loading && (<ActivityIndicator />)}
           </View>
         </KeyboardAwareScrollView>
       </Modal>
@@ -411,14 +423,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 500,
   },
-  modalAddMedButton: {
+  modalButton: {
     backgroundColor: "white",
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: "center",
     width: "60%",
+    marginTop: 10,
   },
-  modalAddMedButtonText: {
+  modalButtonText: {
     color: "#060256",
     fontSize: 16,
     fontWeight: '600',
