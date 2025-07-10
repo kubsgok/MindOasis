@@ -136,6 +136,29 @@ const AirtableService = {
       return null;
     }
   },
+
+  /**
+   * Get user medication list
+   */
+  getMedicationsForUser: async (recordId) => {
+    try {
+      const url = `${MED_TABLE_URL}?filterByFormula=FIND('${recordId}', {Foreign Record ID})`;
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      });
+      return response.data.records.map((rec) => ({
+        id: rec.id,
+        name: rec.fields.Name,
+        dosage: rec.fields.Dosage,
+      }));
+    } catch (e) {
+      console.error("Error fetching user medications:", e);
+      return [];
+    }
+  },
 };
 
 export default AirtableService;

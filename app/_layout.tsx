@@ -4,11 +4,11 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 export default function RootLayout() {
-  // Force logout on every app start
-  useEffect(() => {
-    AsyncStorage.removeItem('logged_in');
-    AsyncStorage.removeItem('user_id');
-  }, []);
+  // // Force logout on every app start
+  // useEffect(() => {
+  //   AsyncStorage.removeItem('logged_in');
+  //   AsyncStorage.removeItem('user_id');
+  // }, []);
 
   const [isLoading, setIsLoading]   = useState(true);
   const [loggedIn,  setLoggedIn]    = useState(false);
