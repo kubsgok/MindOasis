@@ -136,6 +136,71 @@ const AirtableService = {
       return null;
     }
   },
+
+  /**
+   * Get user medication list
+   */
+  getMedicationsForUser: async (recordId) => {
+    try {
+      const url = `${MED_TABLE_URL}?filterByFormula=FIND('${recordId}', {Foreign Record ID})`;
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      });
+      return response.data.records.map((rec) => ({
+        id: rec.id,
+        name: rec.fields.Name,
+        dosage: rec.fields.Dosage,
+        frequency: rec.fields.Frequency,
+        duration: rec.fields.Duration,
+        notes: rec.fields["Additional Notes"],
+      }));
+    } catch (e) {
+      console.error("Error fetching user medications: ", e);
+      return [];
+    }
+  },
+
+  /**
+   * Update a medication record
+   */
+  updateMedication: async (recordId, fields) => {
+    try {
+      const url = `${MED_TABLE_URL}/${recordId}`;
+      const response = await axios.patch(
+        url,
+        { fields },
+        {
+          headers: {
+            Authorization: `Bearer ${API_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      return response.data;
+    } catch (e) {
+      console.error("Error updating medication: ", e);
+      return null;
+    }
+  },
+
+  /**
+   * Delete a medication record
+   */
+  deleteMedication: async (recordId) => {
+    try {
+      const url = `${MED_TABLE_URL}/${recordId}`;
+      const response = await axios.delete(url, {
+        headers: { Authorization: `Bearer ${API_TOKEN}` },
+      });
+      return response.status === 200;
+    } catch (e) {
+      console.error("Error deleting medication: ", e);
+      return false;
+    }
+  },
 };
 
 export default AirtableService;
