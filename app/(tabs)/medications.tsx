@@ -21,7 +21,8 @@ export default function MedicationsTab() {
   const [medFrequency, setMedFrequency] = useState<string>("");
   const [medDuration, setMedDuration] = useState<string>("");
   const [medNotes, setMedNotes] = useState<string>("");
-  const [error, setError] = useState<string>("");
+
+  const [medToEditId, setMedToEditId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchMedications = async () => {
@@ -32,42 +33,66 @@ export default function MedicationsTab() {
         const meds = await AirtableService.getMedicationsForUser(userId);
         setMedications(meds);
       } catch (err) {
-        console.error(err);
-        setError("Failed to load saved medications from Airtable.");
+        console.error("Failed to load medications from Airtable: ", err);
       }
     };
 
     fetchMedications();
   }, []);
 
-  const openMedModal = () => {
-    setMedName("");
-    setMedDosage("");
-    setMedFrequency("");
-    setMedDuration("");
-    setMedNotes("");
+  const openMedModal = (med?: typeof medications[0]) => {
+    if (med) {
+      setMedToEditId(med.id);
+      setMedName(med.name);
+      setMedDosage(med.dosage);
+      setMedFrequency(med.frequency);
+      setMedDuration(med.duration);
+      setMedNotes(med.notes);
+    } else {
+      setMedToEditId(null);
+      setMedName("");
+      setMedDosage("");
+      setMedFrequency("");
+      setMedDuration("");
+      setMedNotes("");
+    }
+
     setShowMedModal(true);
   }
 
-  const addMedication = () => {
-    const nameTrim = medName.trim();
-    const dosageTrim = medDosage.trim();
-    const frequencyTrim = medFrequency.trim();
-    const durationTrim = medDuration.trim();
-    const notesTrim = medNotes.trim()
-    if (!nameTrim || !dosageTrim || !frequencyTrim) {
-      return;
-    }
-    const id = Date.now().toString();
-    const newMed = {id, name: nameTrim, dosage: dosageTrim, frequency: frequencyTrim, duration: durationTrim, notes: notesTrim};
-    const updatedMeds = [...medications, newMed]
+  const addOrUpdateMedication = () => {
+    const nameTrim = (medName || "").trim();
+    const dosageTrim = (medDosage || "").trim();
+    const frequencyTrim = (medFrequency || "").trim();
+    const durationTrim = (medDuration || "").trim();
+    const notesTrim = (medNotes || "").trim()
+    if (!nameTrim || !dosageTrim || !frequencyTrim) return;
+
+    const newMed = {
+      id: medToEditId || Date.now().toString(),
+      name: nameTrim,
+      dosage: dosageTrim,
+      frequency: frequencyTrim,
+      duration: durationTrim,
+      notes: notesTrim,
+    };
+    const updatedMeds = medToEditId ? (
+        medications.map((med) => (med.id === medToEditId ? newMed : med))
+      ) : (
+        [...medications, newMed]
+      );
+
     setMedications(updatedMeds);
     setShowMedModal(false);
-
-    addMedicationToAirtable(newMed);
+    
+    if (medToEditId) {
+      updateMedicationInAirtable(newMed);
+    } else {
+      addMedicationToAirtable(newMed);
+    }
   }
 
-  const addMedicationToAirtable = async (medToSave: { id: string, name: string, dosage: string, frequency: string, duration: string, notes: string }) => {
+  const addMedicationToAirtable = async (medToSave: typeof medications[0]) => {
     try {
       const userId = await AsyncStorage.getItem("user_id");
       if (userId) {
@@ -82,8 +107,22 @@ export default function MedicationsTab() {
         });
       }
     } catch (err) {
-      console.error(err);
-      setError("Failed to save medication to Airtable.");
+      console.error("Failed to save medication to Airtable: ", err);
+    }
+  };
+
+  const updateMedicationInAirtable = async (medToUpdate: typeof medications[0]) => {
+    try {
+      //Update medication in Airtable
+      await AirtableService.updateMedication(medToEditId, {
+        Name: medToUpdate.name,
+        Dosage: medToUpdate.dosage,
+        Frequency: medToUpdate.frequency,
+        Duration: medToUpdate.duration,
+        "Additional Notes": medToUpdate.notes,
+      });
+    } catch (err) {
+      console.error("Failed to update medication in Airtable: ", err);
     }
   };
 
@@ -196,12 +235,12 @@ export default function MedicationsTab() {
       {medications.map(med => (
         <View key={med.id} style={styles.medRow}>
           <Text style={styles.medText}>{med.name} — {med.dosage}</Text>
-          <TouchableOpacity onPress={() => console.log("Edit button tapped")}>
+          <TouchableOpacity onPress={() => openMedModal(med)}>
             <Ionicons name="create-outline" size={20} color="black" />
           </TouchableOpacity>
         </View>
       ))}
-      <TouchableOpacity style={styles.addMedButton} onPress={openMedModal}>
+      <TouchableOpacity style={styles.addMedButton} onPress={() => openMedModal()}>
         <Text style={styles.addMedButtonText}>Add Medication</Text>
       </TouchableOpacity>
 
@@ -268,8 +307,10 @@ export default function MedicationsTab() {
               onChangeText={setMedNotes}
             />
             <View style={{ alignItems: "center", marginVertical: 12 }}>
-              <TouchableOpacity style={styles.modalAddMedButton} onPress={addMedication}>
-                <Text style={styles.modalAddMedButtonText}>Add</Text>
+              <TouchableOpacity style={styles.modalAddMedButton} onPress={addOrUpdateMedication}>
+                <Text style={styles.modalAddMedButtonText}>
+                  {medToEditId ? "Save" : "Add"}
+                </Text>
               </TouchableOpacity>
             </View>
             {loading ? (

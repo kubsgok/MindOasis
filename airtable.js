@@ -153,10 +153,36 @@ const AirtableService = {
         id: rec.id,
         name: rec.fields.Name,
         dosage: rec.fields.Dosage,
+        frequency: rec.fields.Frequency,
+        duration: rec.fields.Duration,
+        notes: rec.fields["Additional Notes"],
       }));
     } catch (e) {
-      console.error("Error fetching user medications:", e);
+      console.error("Error fetching user medications: ", e);
       return [];
+    }
+  },
+
+  /**
+   * Update a medication record
+   */
+  updateMedication: async (recordId, fields) => {
+    try {
+      const url = `${MED_TABLE_URL}/${recordId}`;
+      const response = await axios.patch(
+        url,
+        { fields },
+        {
+          headers: {
+            Authorization: `Bearer ${API_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      return response.data;
+    } catch (e) {
+      console.error("Error updating medication: ", e);
+      return null;
     }
   },
 };
