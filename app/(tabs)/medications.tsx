@@ -60,7 +60,7 @@ export default function MedicationsTab() {
     setShowMedModal(true);
   }
 
-  const addOrUpdateMedication = () => {
+  const addOrUpdateMedication = async () => {
     const nameTrim = (medName || "").trim();
     const dosageTrim = (medDosage || "").trim();
     const frequencyTrim = (medFrequency || "").trim();
@@ -68,46 +68,50 @@ export default function MedicationsTab() {
     const notesTrim = (medNotes || "").trim()
     if (!nameTrim || !dosageTrim || !frequencyTrim) return;
 
-    const newMed = {
-      id: medToEditId || Date.now().toString(),
+    const newMedFields = {
       name: nameTrim,
       dosage: dosageTrim,
       frequency: frequencyTrim,
       duration: durationTrim,
       notes: notesTrim,
     };
-    const updatedMeds = medToEditId ? (
-        medications.map((med) => (med.id === medToEditId ? newMed : med))
-      ) : (
-        [...medications, newMed]
-      );
 
-    setMedications(updatedMeds);
     setShowMedModal(false);
-    
-    if (medToEditId) {
-      updateMedicationInAirtable(newMed);
-    } else {
-      addMedicationToAirtable(newMed);
-    }
-  }
 
-  const addMedicationToAirtable = async (medToSave: typeof medications[0]) => {
-    try {
+    if (medToEditId) {
+      //Update medication in Airtable
+      await updateMedicationInAirtable({ ...newMedFields, id: medToEditId });
+
+      //Update medication in local state
+      const updatedMeds = medications.map((med) => (med.id === medToEditId ? { ...newMedFields, id: medToEditId } : med));
+      setMedications(updatedMeds);
+    } else {
+      //Add medication to Airtable
       const userId = await AsyncStorage.getItem("user_id");
-      if (userId) {
-        //Save medication to Airtable
-        await AirtableService.addMedication({
-          Name: medToSave.name,
-          Dosage: medToSave.dosage,
-          Frequency: medToSave.frequency,
-          Duration: medToSave.duration,
-          "Additional Notes": medToSave.notes,
+      if (!userId) return;
+      
+      try {
+        const result = await AirtableService.addMedication({
+          Name: nameTrim,
+          Dosage: dosageTrim,
+          Frequency: frequencyTrim,
+          Duration: durationTrim,
+          "Additional Notes": notesTrim,
           User: [ userId ],
         });
+
+        const medRecordId = result?.[0]?.id;
+        if (!medRecordId) throw new Error("No medication record ID returned");
+
+        // Add medication to local state
+        const newMed = {
+          id: medRecordId,
+          ...newMedFields,
+        };
+        setMedications([...medications, newMed]);
+      } catch (err) {
+        console.error("Failed to add medication to Airtable: ", err);
       }
-    } catch (err) {
-      console.error("Failed to save medication to Airtable: ", err);
     }
   };
 
