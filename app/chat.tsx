@@ -1,7 +1,5 @@
 import KeyboardAvoidingViewContainer from "@/components/KeyboardAvoidingViewContainer";
-import { BACKEND_API_HOST } from "@env";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, Keyboard, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -11,66 +9,18 @@ type Message = {
     text: string;
 };
 
-// Avatar mapping (reuse from home page)
-const avatars = [
-  { name: 'cat', src: require('../assets/avatars/cat.png') },
-  { name: 'dog', src: require('../assets/avatars/dog.png') },
-  { name: 'bunny', src: require('../assets/avatars/bunny.png') },
-  { name: 'dog2', src: require('../assets/avatars/dog2.png') },
-  { name: 'hamster', src: require('../assets/avatars/hamster.png') },
-  { name: 'bird', src: require('../assets/avatars/bird.png') },
-  { name: 'hamster2', src: require('../assets/avatars/hamster2.png') },
-  { name: 'dog3', src: require('../assets/avatars/dog3.png') },
-  { name: 'cat2', src: require('../assets/avatars/cat2.png') },
-];
-
-export default function Chat({ medications: propMeds }: { medications?: any[] }) { 
+export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState<string>("");
-  const [medications, setMedications] = useState<any[]>(propMeds || []);
-  const [petAvatar, setPetAvatar] = useState<any>(avatars[0].src); // default to cat
+  const [input, setInput] = useState<string>("")
+  const [textInputHeight, setTextInputHeight] = useState(60)
 
   const router = useRouter();
-  // Fetch user data
-  useEffect(() => {
-    
-  });
-  // Fetch medications if not passed as prop
-  useEffect(() => {
-    if (!propMeds) {
-      (async () => {
-        try {
-          const userId = await AsyncStorage.getItem('user_id');
-          if (!userId) return;
-          // Dynamically import AirtableService to avoid circular deps
-          const AirtableService = (await import('../airtable')).default;
-          const meds = await AirtableService.getMedicationsForUser(userId);
-          setMedications(meds);
-        } catch (e) {
-          console.error('Failed to fetch medications:', e);
-        }
-      })();
-    }
-  }, [propMeds]);
 
-  // Fetch pet avatar on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const userId = await AsyncStorage.getItem('user_id');
-        if (!userId) return;
-        const AirtableService = (await import('../airtable')).default;
-        const users: { id: string; fields: any }[] = await AirtableService.getAllUsers();
-        const userRecord = users.find((u: { id: string; fields: any }) => u.id === userId);
-        if (userRecord && userRecord.fields.avatar) {
-          const avatarObj = avatars.find((a) => a.name === userRecord.fields.avatar);
-          setPetAvatar(avatarObj ? avatarObj.src : avatars[0].src);
-        }
-      } catch (e) {
-        // fallback to default
-      }
-    })();
-  }, []);
+  const handleContentSizeChange = (event: {
+    nativeEvent: { contentSize: { height: number }};
+  }) => {
+    setTextInputHeight(Math.max(event.nativeEvent.contentSize.height, 40))
+  };
 
   const handleSubmit = async () => {
     setInput("");
@@ -81,27 +31,16 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      // Prepare system prompt with user data
-      const medList = medications && medications.length
-        ? `The user's medications are: ${medications.map(m => m.name).join(', ')}.`
-        : "";
-
       const response = await fetch(`${BACKEND_API_HOST}/chatbot`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: "test_user",
-          message: input,
-          chat_history: messages.reduce<[string, string][]>((acc, cur, i, arr) => {
-            if (cur.sender === "user" && arr[i+1]?.sender === "bot") {
-              acc.push([cur.text, arr[i+1].text]);
-            }
-            return acc;
-          }, [])
+          model: 'llama3-8b-8192', // or another Groq-supported model
+          messages: groqMessages,
         }),
       });
 
-      const data = await response.json()
+      const data = await response.json();
       const botMsg: Message = { sender: "bot", text: data.botResponse };
       setMessages((prev) => [...prev, botMsg]);
       
@@ -113,7 +52,6 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
       };
       setMessages((prev) => [...prev, errorMsg]);
     }
-
   }
 
   return (
@@ -128,14 +66,14 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
             </TouchableOpacity>
 
             <View style={styles.titleContainer}>
-              <Text style={styles.titleText}>Pet Name</Text>
+              <Text style={styles.titleText}>Your Pet Assistant</Text>
             </View>
 
             <TouchableOpacity 
               style={styles.petPhotoContainer}
               onPress={() => console.log("Pet profile photo tapped")} // TO-DO: Link to chat history
             >
-              <Image source={require("../assets/images/cat.png")} style={styles.petPhoto}/>
+              <Image source={petAvatar} style={styles.petPhoto}/>
             </TouchableOpacity>
         </View>
 
@@ -172,7 +110,6 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
             onChangeText={ setInput }
             onSubmitEditing={ handleSubmit }
           />
-          
           {
             input.trim() ? (
               <TouchableOpacity
@@ -184,13 +121,13 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
             ) : (
               <TouchableOpacity
                 style={styles.button}
+                onPress={() => console.log("Mic button tapped")} // TO-DO: Handle speech-to-text
               >
-                <Ionicons size={20} name="send" color="#ACACAD" />
+                <Ionicons size={30} name="mic" color="#060256" />
               </TouchableOpacity>
             )
           }
         </View>
-        
       </View>
     </KeyboardAvoidingViewContainer>
   );
