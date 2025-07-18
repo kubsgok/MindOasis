@@ -82,12 +82,35 @@ export default function MedicationsTab() {
     );
   };
 
+  const onChangeTimePicker = (event: any, selectedTime?: Date) => {
+    if (event.type == "set" && selectedTime) {
+      setTempTime(selectedTime);
+
+      if (Platform.OS === "android") {
+        setShowTimePicker(false);
+        const hours = selectedTime.getHours().toString().padStart(2, "0");
+        const minutes = selectedTime.getMinutes().toString().padStart(2, "0");
+        setMedReminderTimes([...medReminderTimes, `${hours}:${minutes}`]);
+      }
+    } else if (Platform.OS === "android") {
+      setShowTimePicker(false);
+    }
+  };
+
+  const confirmReminderTimeIOS = () => {
+    const hours = tempTime.getHours().toString().padStart(2, "0");
+    const minutes = tempTime.getMinutes().toString().padStart(2, "0");
+    setMedReminderTimes([...medReminderTimes, `${hours}:${minutes}`]);
+    setShowTimePicker(false);
+  }
+
   const addReminderTime = (event: any, selectedDate?: Date) => {
     setShowTimePicker(false);
     if (selectedDate) {
       const hours = selectedDate.getHours().toString().padStart(2, "0");
       const minutes = selectedDate.getMinutes().toString().padStart(2, "0");
       setMedReminderTimes([...medReminderTimes, `${hours}:${minutes}`]);
+      setShowTimePicker(false);
     }
   };
 
@@ -311,11 +334,12 @@ export default function MedicationsTab() {
           enableAutomaticScroll={(Platform.OS === "ios")}
         >
           <View style={styles.modalContent}>
-            <View style={styles.modalHeaderContainer}>
-              <TouchableOpacity onPress={() => {setShowMedModal(false); setShowReminderModal(false); setMedReminderDays([]); setMedReminderTimes([]); setTempTime(new Date());}}>
-                <Ionicons name="close" size={30} color="white" />
-              </TouchableOpacity>
-              {!showReminderModal && (
+            {/* Modal Header */}
+            {!showReminderModal && (
+              <View style={styles.modalHeaderContainer}>
+                <TouchableOpacity onPress={() => {setShowMedModal(false); setShowReminderModal(false); setMedReminderDays([]); setMedReminderTimes([]); setTempTime(new Date());}}>
+                  <Ionicons name="close" size={30} color="white" />
+                </TouchableOpacity>
                 <View style={{ flexDirection: "row" }}>
                   <TouchableOpacity style={{ paddingRight: 5 }} onPress={pickImageCamera}>
                     <Ionicons name="camera" size={30} color="white" />
@@ -324,8 +348,18 @@ export default function MedicationsTab() {
                     <Ionicons name="image" size={30} color="white" />
                   </TouchableOpacity>
                 </View>
-              )}
-            </View>
+              </View>
+            )
+            }
+
+            {showReminderModal && (
+              <View style={styles.modalHeaderContainer}>
+                <TouchableOpacity onPress={() => {setShowMedModal(true); setShowReminderModal(false); setShowTimePicker(false);}}>
+                  <Ionicons name="chevron-back" size={30} color="white" />
+                </TouchableOpacity>
+              </View>
+            )
+            }
 
             {!showReminderModal ? (
               <>
@@ -402,31 +436,48 @@ export default function MedicationsTab() {
 
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <Text style={styles.modalTextInputLabels}>Reminder Times:</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowTimePicker(true)}
-                  >
+                  <TouchableOpacity onPress={() => setShowTimePicker(true)}>
                     <Ionicons name="add-circle" size={20} color="white" />
                   </TouchableOpacity>
                 </View>
                 
-                <View style={{ flexDirection: "column", flexWrap: "wrap", paddingLeft: 10 }}>
+                <View style={styles.medReminderTimesContainer}>
                   {medReminderTimes.map((time, idx) => (
-                    <Text key={idx} style={[styles.reminderModalText, { color: "white" }]}>{time}</Text>
+                    <View key={idx} style={styles.medReminderTimeRow}>
+                      <Text style={[styles.reminderModalText, { color: "white" }]}>{time}</Text>
+                      <TouchableOpacity onPress={() => console.log("Edit reminder time button pressed")}>
+                        <Ionicons name="create-outline" size={15} color="white" />
+                      </TouchableOpacity>
+                    </View>
                   ))}
                 </View>
 
                 {showTimePicker && (
                   <DateTimePicker
-                    value={tempTime}
                     mode="time"
                     display="spinner"
-                    onChange={addReminderTime}
+                    value={tempTime}
+                    onChange={onChangeTimePicker}
+                    themeVariant="dark"
                   />
                 )
                 }
 
+                {showTimePicker && Platform.OS === "ios" && (
+                  <View style={{ flexDirection: "row", justifyContent: "space-around" }}>
+                    <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                      <Text style={{ color: "white" }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={confirmReminderTimeIOS}>
+                      <Text style={{ color: "white" }}>Confirm</Text>
+                    </TouchableOpacity>
+                  </View>
+                )
+                }
+                
+
                 <View style={{ alignItems: "center", marginVertical: 12 }}>
-                  <TouchableOpacity style={styles.modalButton} onPress={() => setShowReminderModal(true)}>
+                  <TouchableOpacity style={styles.modalButton} onPress={() => {setShowReminderModal(false); setShowMedModal(false);}}>
                     <Text style={styles.modalButtonText}>
                       {medToEditId ? "Save" : "Add"}
                     </Text>
@@ -452,7 +503,7 @@ export default function MedicationsTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#d96922",
+    backgroundColor: "#EA6F1D",
     paddingTop: 48,
   },
   contentContainer: {
@@ -569,5 +620,20 @@ const styles = StyleSheet.create({
     width: "60%",
     marginTop: 10,
     flexDirection: "row",
+  },
+  medReminderTimesContainer: {
+    flexDirection: "column",
+    flexWrap: "wrap",
+    paddingLeft: 5,
+  },
+  medReminderTimeRow: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "white",
+    borderRadius: 12,
+    padding: 10,
+    margin: 5,
+    justifyContent: "space-between",
+    width: "28%",
   },
 });
