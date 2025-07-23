@@ -21,16 +21,19 @@ export default function MedicationsTab() {
   const [medFrequency, setMedFrequency] = useState<string>("");
   const [medDuration, setMedDuration] = useState<string>("");
   const [medNotes, setMedNotes] = useState<string>("");
+  const [medToEditId, setMedToEditId] = useState<string | null>(null);
 
   // Medications reminders state
   const [medReminderDays, setMedReminderDays] = useState<string[]>([]);
   const [medReminderTimes, setMedReminderTimes] = useState<string[]>([]);
   const [showTimePicker, setShowTimePicker] = useState<boolean>(false);
   const [tempTime, setTempTime] = useState<Date>(new Date());
+  const [reminderTimeToEditId, setReminderTimeToEditId] = useState<number | null>(null);
 
+  // Modals state
   const [showMedModal, setShowMedModal] = useState<boolean>(false);
   const [showReminderModal, setShowReminderModal] = useState<boolean>(false);
-  const [medToEditId, setMedToEditId] = useState<string | null>(null);
+  
 
   // Fetch medications that are already in Airtable
   useEffect(() => {
@@ -92,28 +95,53 @@ export default function MedicationsTab() {
         setShowTimePicker(false);
         const hours = selectedTime.getHours().toString().padStart(2, "0");
         const minutes = selectedTime.getMinutes().toString().padStart(2, "0");
-        setMedReminderTimes([...medReminderTimes, `${hours}:${minutes}`]);
+        const formattedTime = `${hours}:${minutes}`;
+        
+        if (reminderTimeToEditId !== null) {
+          setMedReminderTimes((prevTimes) => {
+            const newTimes = [...prevTimes];
+            newTimes[reminderTimeToEditId] = formattedTime;
+            return newTimes;
+          });
+          setReminderTimeToEditId(null);
+        } else {
+          setMedReminderTimes([...medReminderTimes, formattedTime]);
+        }
       }
     } else if (Platform.OS === "android") {
       setShowTimePicker(false);
+      setReminderTimeToEditId(null);
     }
   };
 
   const confirmReminderTimeIOS = () => {
     const hours = tempTime.getHours().toString().padStart(2, "0");
     const minutes = tempTime.getMinutes().toString().padStart(2, "0");
-    setMedReminderTimes([...medReminderTimes, `${hours}:${minutes}`]);
-    setShowTimePicker(false);
-  }
+    const formattedTime = `${hours}:${minutes}`;
 
-  const addReminderTime = (event: any, selectedDate?: Date) => {
-    setShowTimePicker(false);
-    if (selectedDate) {
-      const hours = selectedDate.getHours().toString().padStart(2, "0");
-      const minutes = selectedDate.getMinutes().toString().padStart(2, "0");
-      setMedReminderTimes([...medReminderTimes, `${hours}:${minutes}`]);
-      setShowTimePicker(false);
+    if (reminderTimeToEditId !== null) {
+      setMedReminderTimes((prevTimes) => {
+        const newTimes = [...prevTimes];
+        newTimes[reminderTimeToEditId] = formattedTime;
+        return newTimes;
+      });
+      setReminderTimeToEditId(null);
+    } else {
+      setMedReminderTimes([...medReminderTimes, formattedTime]);
     }
+
+    setShowTimePicker(false);
+  };
+
+  // Editing a reminder time
+  const editReminderTime = async (time: string, index: number) => {
+    const [hour, minute] = time.split(":").map(Number);
+    const newTime = new Date();
+    newTime.setHours(hour);
+    newTime.setMinutes(minute);
+    setTempTime(newTime);
+    setReminderTimeToEditId(index);
+    setShowTimePicker(true);
   };
 
   // Adding or editing a medication
@@ -457,7 +485,7 @@ export default function MedicationsTab() {
                   {medReminderTimes.map((time, idx) => (
                     <View key={idx} style={styles.medReminderTimeRow}>
                       <Text style={[styles.reminderModalText, { color: "white" }]}>{time}</Text>
-                      <TouchableOpacity onPress={() => console.log("Edit reminder time button pressed")}>
+                      <TouchableOpacity onPress={() => editReminderTime(time, idx)}>
                         <Ionicons name="create-outline" size={15} color="white" />
                       </TouchableOpacity>
                     </View>
@@ -477,7 +505,7 @@ export default function MedicationsTab() {
 
                 {showTimePicker && Platform.OS === "ios" && (
                   <View style={{ flexDirection: "row", justifyContent: "space-around" }}>
-                    <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                    <TouchableOpacity onPress={() => { setShowTimePicker(false); setReminderTimeToEditId(null); }}>
                       <Text style={{ color: "white" }}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={confirmReminderTimeIOS}>
