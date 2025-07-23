@@ -156,6 +156,8 @@ const AirtableService = {
         frequency: rec.fields.Frequency,
         duration: rec.fields.Duration,
         notes: rec.fields["Additional Notes"],
+        reminderDays: rec.fields["Reminder Days"] || [],
+        reminderTimes: rec.fields["Reminder Times"] ? rec.fields["Reminder Times"].split(",").map((t) => t.trim()) : [],
       }));
     } catch (e) {
       console.error("Error fetching user medications: ", e);

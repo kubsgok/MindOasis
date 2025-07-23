@@ -15,7 +15,7 @@ export default function MedicationsTab() {
   const [loading, setLoading] = useState<boolean>(false);
 
   // Medications state
-  const [medications, setMedications] = useState<{ id: string; name: string; dosage: string; frequency: string; duration: string; notes: string; }[]>([]);
+  const [medications, setMedications] = useState<{ id: string; name: string; dosage: string; frequency: string; duration: string; notes: string; reminderDays: string[]; reminderTimes: string[]; }[]>([]);
   const [medName, setMedName] = useState<string>("");
   const [medDosage, setMedDosage] = useState<string>("");
   const [medFrequency, setMedFrequency] = useState<string>("");
@@ -58,6 +58,8 @@ export default function MedicationsTab() {
       setMedFrequency(med.frequency);
       setMedDuration(med.duration);
       setMedNotes(med.notes);
+      setMedReminderDays(med.reminderDays || []);
+      setMedReminderTimes(med.reminderTimes || []);
     } else {
       setMedToEditId(null);
       setMedName("");
@@ -129,6 +131,8 @@ export default function MedicationsTab() {
       frequency: frequencyTrim,
       duration: durationTrim,
       notes: notesTrim,
+      reminderDays: medReminderDays,
+      reminderTimes: medReminderTimes,
     };
 
     setShowMedModal(false);
@@ -153,6 +157,8 @@ export default function MedicationsTab() {
           Frequency: frequencyTrim,
           Duration: durationTrim,
           "Additional Notes": notesTrim,
+          "Reminder Days": medReminderDays,
+          "Reminder Times": medReminderTimes.join(","),
           User: [ userId ],
         });
 
@@ -181,6 +187,8 @@ export default function MedicationsTab() {
         Frequency: medToUpdate.frequency,
         Duration: medToUpdate.duration,
         "Additional Notes": medToUpdate.notes,
+        "Reminder Days": medReminderDays,
+        "Reminder Times": medReminderTimes.join(","),
       });
     } catch (err) {
       console.error("Failed to update medication in Airtable: ", err);
@@ -357,10 +365,14 @@ export default function MedicationsTab() {
                 <TouchableOpacity onPress={() => {setShowMedModal(true); setShowReminderModal(false); setShowTimePicker(false);}}>
                   <Ionicons name="chevron-back" size={30} color="white" />
                 </TouchableOpacity>
+                <TouchableOpacity onPress={() => {setShowMedModal(false); setShowReminderModal(false); setMedReminderDays([]); setMedReminderTimes([]); setTempTime(new Date());}}>
+                  <Ionicons name="close" size={30} color="white" />
+                </TouchableOpacity>
               </View>
             )
             }
 
+            {/* Modal Body */}
             {!showReminderModal ? (
               <>
                 <Text style={styles.modalTextInputLabels}>Name:</Text>
@@ -477,7 +489,7 @@ export default function MedicationsTab() {
                 
 
                 <View style={{ alignItems: "center", marginVertical: 12 }}>
-                  <TouchableOpacity style={styles.modalButton} onPress={() => {setShowReminderModal(false); setShowMedModal(false);}}>
+                  <TouchableOpacity style={styles.modalButton} onPress={addOrUpdateMedication}>
                     <Text style={styles.modalButtonText}>
                       {medToEditId ? "Save" : "Add"}
                     </Text>
