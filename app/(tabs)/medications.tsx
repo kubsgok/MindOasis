@@ -144,6 +144,26 @@ export default function MedicationsTab() {
     setShowTimePicker(true);
   };
 
+  // Deleting a reminder time
+  const deleteReminderTime = async (indexToDelete: number) => {
+    Alert.alert(
+      "Delete Reminder",
+      "Are you sure you want to delete this reminder time?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const newTimes = [...medReminderTimes];
+            newTimes.splice(indexToDelete, 1);
+            setMedReminderTimes(newTimes);
+          }
+        }
+      ]
+    )
+  };
+
   // Adding or editing a medication
   const addOrUpdateMedication = async () => {
     const nameTrim = (medName || "").trim();
@@ -485,9 +505,14 @@ export default function MedicationsTab() {
                   {medReminderTimes.map((time, idx) => (
                     <View key={idx} style={styles.medReminderTimeRow}>
                       <Text style={[styles.reminderModalText, { color: "white" }]}>{time}</Text>
-                      <TouchableOpacity onPress={() => editReminderTime(time, idx)}>
-                        <Ionicons name="create-outline" size={15} color="white" />
-                      </TouchableOpacity>
+                      <View style={{ flexDirection: "row" }}>
+                        <TouchableOpacity style={{ marginRight: 5 }} onPress={() => editReminderTime(time, idx)}>
+                          <Ionicons name="create-outline" size={15} color="white" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => deleteReminderTime(idx)}>
+                          <Ionicons name="trash-outline" size={15} color="white" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   ))}
                 </View>
@@ -674,6 +699,6 @@ const styles = StyleSheet.create({
     padding: 10,
     margin: 5,
     justifyContent: "space-between",
-    width: "28%",
+    width: "35%",
   },
 });
