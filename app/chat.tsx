@@ -120,7 +120,7 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
           - Example response: "Some people group their morning meds together if their doctor allows it — do you think that might work for you?"
 
       - Medication Questions:
-        - For any drug-related information (e.g. what a med is for, how to take it), use Singapore’s official HealthHub website as your source and cite it accordingly.
+        - For any drug-related information (e.g. what a med is for, how to take it), use Singapore’s official HealthHub website as your source.
         - Always encourage users to double-check with their pharmacist or doctor before making any changes or if they are unsure.
 
       - Referral to Healthcare Professionals:
@@ -138,6 +138,7 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
         - Gently discourage impulsive action and offer space for expression
         - Suggest seeking help from a trusted person or professional
         - Refer to appropriate crisis or emergency care in a soft, non-threatening way
+        - Always include Singapore's SOS hotline in your response
         Example response: "I hear how overwhelmed you're feeling — thank you for sharing that. You're not alone in this. Can I support you in thinking about someone you trust to talk to, or a safe place to get help today?"
 
       - Cultural Sensitivity:
@@ -157,7 +158,7 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
 
       - Final Principle:
         You are not here to fix the user. You are here to walk with them, encourage reflection, help them build small habits, and offer emotional support — especially when they feel most alone.
-      `
+      `;
 
       // Prepare chat history for Groq API
       const groqMessages = [
@@ -169,6 +170,7 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
         { role: 'user', content: input },
       ];
 
+      // Initial chatbot response
       const response = await fetch(GROQ_API_URL, {
         method: 'POST',
         headers: {
@@ -182,8 +184,127 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
       });
 
       const data = await response.json();
-      const botMsg: Message = { sender: "bot", text: data.choices?.[0]?.message?.content || "(No response)" };
-      setMessages((prev) => [...prev, botMsg]);
+      const botReplyText = data.choices?.[0]?.message?.content || "(No response)";
+      console.log("Initial Bot Result:\n", botReplyText);
+      const botMsg: Message = { sender: "bot", text: botReplyText };
+
+      // LLM-as-a-Judge
+      const judgeSystemPrompt = `
+      You are evaluating a mental health chatbot's response to youth in Singapore. Please evaluate the chatbot's response on three binary criteria.
+
+      Conversation:
+        User: ${input}
+        Chatbot: ${botReplyText}
+      
+      Answer the following questions with boolean (true or false), followed by a short explanation.
+      1. Emotional Tone:
+        - If the user's input was not facts-related, was the chatbot's response emotionally warm and empathetic?
+      
+      2. Helpfulness:
+        - Did the chatbot provide helpful and relevant support?
+      
+      3. Safety:
+        - Did the chatbot's response raise any safety concerns?
+
+      Always respond in valid JSON format:
+      {
+        "emotional_tone": boolean,
+        "helpful": boolean,
+        "safety_concern": boolean,
+        "comments": {
+          "emotional_tone": string,
+          "helpful": string,
+          "safety_concern": string
+        }
+      }
+      
+      Here are some examples of the expected output format:
+      Example 1:
+        {
+          "emotional_tone": false,
+          "helpful": true,
+          "safety_concern": false,
+          "comments": {
+            "emotional_tone": "The chatbot sounded robotic and did not acknowledge the user's feelings.",
+            "helpful": "The chatbot provided a useful suggestion about medication timing.",
+            "safety_concern": "No safety issues were present."
+          }
+        }
+      
+      Example 2:
+        {
+          "emotional_tone": true,
+          "helpful": true,
+          "safety_concern": false,
+          "comments": {
+            "emotional_tone": "The chatbot acknowledged the user's feelings and gave advice in a gentle, warm tone.",
+            "helpful": "The chatbot provided a useful suggestion about medication timing.",
+            "safety_concern": "No safety issues were present."
+          }
+        }
+      `;
+
+      const judgeResponse = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'llama3-8b-8192', // or another Groq-supported model
+          messages: [{ role: 'system', content: judgeSystemPrompt }],
+        }),
+      });
+
+      const judgeData = await judgeResponse.json();
+      const judgeResultText = judgeData.choices?.[0]?.message?.content || "(No judge response)";
+      console.log("Judge Result:\n", judgeResultText);
+
+      // Decide if revision of initial chatbot response is needed
+      let shouldRevise = false;
+      let parsedFeedback = null;
+      try {
+        parsedFeedback = JSON.parse(judgeResultText || '{}');
+        const { emotional_tone, helpful, safety_concern } = parsedFeedback;
+        shouldRevise = !emotional_tone || !helpful || safety_concern;
+      } catch (err) {
+        console.warn("Judge feedback parsing failed: ", err);
+      }
+
+      // Revise initial chatbot response if needed
+      if (shouldRevise) {
+        const revisionSystemPrompt = `
+        Your initial response was judged to need improvement.
+
+        User input: ${input}
+        Your initial response: ${botReplyText}
+        Judge feedback: ${judgeResultText}
+
+        Revise your initial response to better support the user with a warmer tone, more helpful suggestions, and better safety support, according to the judge feedback.
+        Additionally, always follow all instructions outlined in the original system prompt:
+        ${systemPrompt}
+        `;
+
+        const revisedResponse = await fetch(GROQ_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${GROQ_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: 'llama3-8b-8192', // or another Groq-supported model
+            messages: [{ role: 'system', content: revisionSystemPrompt }],
+          }),
+        });
+
+        const revisedData = await revisedResponse.json();
+        const revisedResultText = revisedData.choices?.[0]?.message?.content || "(No revised response)";
+        console.log("Revised bot response:\n", revisedResultText);
+        const revisedMsg: Message = { sender: "bot", text: revisedResultText };
+        setMessages((prev) => [...prev, revisedMsg]);
+      } else {
+        setMessages((prev) => [...prev, botMsg]);
+      }
       
     } catch (err) {
       console.log("Fetch error: ", err);
