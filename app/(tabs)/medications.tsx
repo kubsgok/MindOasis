@@ -1,11 +1,11 @@
 import AirtableService from "@/airtable";
-import { BACKEND_API_HOST } from "@env";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as ImagePicker from "expo-image-picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { convertImageToBase64, performOCR, pickImage } from "../ocr";
 
 export default function MedicationsTab() {
   // Image OCR state
@@ -14,16 +14,27 @@ export default function MedicationsTab() {
   const [loading, setLoading] = useState<boolean>(false);
 
   // Medications state
-  const [showMedModal, setShowMedModal] = useState<boolean>(false);
-  const [medications, setMedications] = useState<{ id: string; name: string; dosage: string; frequency: string; duration: string; notes: string; }[]>([]);
+  const [medications, setMedications] = useState<{ id: string; name: string; dosage: string; frequency: string; duration: string; notes: string; reminderDays: string[]; reminderTimes: string[]; }[]>([]);
   const [medName, setMedName] = useState<string>("");
   const [medDosage, setMedDosage] = useState<string>("");
   const [medFrequency, setMedFrequency] = useState<string>("");
   const [medDuration, setMedDuration] = useState<string>("");
   const [medNotes, setMedNotes] = useState<string>("");
-
   const [medToEditId, setMedToEditId] = useState<string | null>(null);
 
+  // Medications reminders state
+  const [medReminderDays, setMedReminderDays] = useState<string[]>([]);
+  const [medReminderTimes, setMedReminderTimes] = useState<string[]>([]);
+  const [showTimePicker, setShowTimePicker] = useState<boolean>(false);
+  const [tempTime, setTempTime] = useState<Date>(new Date());
+  const [reminderTimeToEditId, setReminderTimeToEditId] = useState<number | null>(null);
+
+  // Modals state
+  const [showMedModal, setShowMedModal] = useState<boolean>(false);
+  const [showReminderModal, setShowReminderModal] = useState<boolean>(false);
+  
+
+  // Fetch medications that are already in Airtable
   useEffect(() => {
     const fetchMedications = async () => {
       try {
@@ -40,6 +51,7 @@ export default function MedicationsTab() {
     fetchMedications();
   }, []);
 
+  // Opening the medications modal
   const openMedModal = (med?: typeof medications[0]) => {
     if (med) {
       setMedToEditId(med.id);
@@ -48,6 +60,8 @@ export default function MedicationsTab() {
       setMedFrequency(med.frequency);
       setMedDuration(med.duration);
       setMedNotes(med.notes);
+      setMedReminderDays(med.reminderDays || []);
+      setMedReminderTimes(med.reminderTimes || []);
     } else {
       setMedToEditId(null);
       setMedName("");
@@ -55,11 +69,101 @@ export default function MedicationsTab() {
       setMedFrequency("");
       setMedDuration("");
       setMedNotes("");
+      setMedReminderDays([]);
+      setMedReminderTimes([]);
+      setTempTime(new Date());
     }
 
     setShowMedModal(true);
   }
 
+  // Setting reminders
+  const daysOfWeek = ["M", "Tu", "W", "Th", "F", "Sa", "Su"];
+  
+  const toggleDay = (day: string) => {
+    setMedReminderDays((prev) => 
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
+
+  const onChangeTimePicker = (event: any, selectedTime?: Date) => {
+    if (event.type == "set" && selectedTime) {
+      setTempTime(selectedTime);
+
+      if (Platform.OS === "android") {
+        setShowTimePicker(false);
+        const hours = selectedTime.getHours().toString().padStart(2, "0");
+        const minutes = selectedTime.getMinutes().toString().padStart(2, "0");
+        const formattedTime = `${hours}:${minutes}`;
+        
+        if (reminderTimeToEditId !== null) {
+          setMedReminderTimes((prevTimes) => {
+            const newTimes = [...prevTimes];
+            newTimes[reminderTimeToEditId] = formattedTime;
+            return newTimes;
+          });
+          setReminderTimeToEditId(null);
+        } else {
+          setMedReminderTimes([...medReminderTimes, formattedTime]);
+        }
+      }
+    } else if (Platform.OS === "android") {
+      setShowTimePicker(false);
+      setReminderTimeToEditId(null);
+    }
+  };
+
+  const confirmReminderTimeIOS = () => {
+    const hours = tempTime.getHours().toString().padStart(2, "0");
+    const minutes = tempTime.getMinutes().toString().padStart(2, "0");
+    const formattedTime = `${hours}:${minutes}`;
+
+    if (reminderTimeToEditId !== null) {
+      setMedReminderTimes((prevTimes) => {
+        const newTimes = [...prevTimes];
+        newTimes[reminderTimeToEditId] = formattedTime;
+        return newTimes;
+      });
+      setReminderTimeToEditId(null);
+    } else {
+      setMedReminderTimes([...medReminderTimes, formattedTime]);
+    }
+
+    setShowTimePicker(false);
+  };
+
+  // Editing a reminder time
+  const editReminderTime = async (time: string, index: number) => {
+    const [hour, minute] = time.split(":").map(Number);
+    const newTime = new Date();
+    newTime.setHours(hour);
+    newTime.setMinutes(minute);
+    setTempTime(newTime);
+    setReminderTimeToEditId(index);
+    setShowTimePicker(true);
+  };
+
+  // Deleting a reminder time
+  const deleteReminderTime = async (indexToDelete: number) => {
+    Alert.alert(
+      "Delete Reminder",
+      "Are you sure you want to delete this reminder time?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const newTimes = [...medReminderTimes];
+            newTimes.splice(indexToDelete, 1);
+            setMedReminderTimes(newTimes);
+          }
+        }
+      ]
+    )
+  };
+
+  // Adding or editing a medication
   const addOrUpdateMedication = async () => {
     const nameTrim = (medName || "").trim();
     const dosageTrim = (medDosage || "").trim();
@@ -74,10 +178,13 @@ export default function MedicationsTab() {
       frequency: frequencyTrim,
       duration: durationTrim,
       notes: notesTrim,
+      reminderDays: medReminderDays,
+      reminderTimes: medReminderTimes,
     };
 
     setShowMedModal(false);
-
+    setShowReminderModal(false);
+    
     if (medToEditId) {
       //Update medication in Airtable
       await updateMedicationInAirtable({ ...newMedFields, id: medToEditId });
@@ -97,6 +204,8 @@ export default function MedicationsTab() {
           Frequency: frequencyTrim,
           Duration: durationTrim,
           "Additional Notes": notesTrim,
+          "Reminder Days": medReminderDays,
+          "Reminder Times": medReminderTimes.join(","),
           User: [ userId ],
         });
 
@@ -115,6 +224,7 @@ export default function MedicationsTab() {
     }
   };
 
+  // Saving edits to medications to Airtable
   const updateMedicationInAirtable = async (medToUpdate: typeof medications[0]) => {
     try {
       //Update medication in Airtable
@@ -124,12 +234,15 @@ export default function MedicationsTab() {
         Frequency: medToUpdate.frequency,
         Duration: medToUpdate.duration,
         "Additional Notes": medToUpdate.notes,
+        "Reminder Days": medReminderDays,
+        "Reminder Times": medReminderTimes.join(","),
       });
     } catch (err) {
       console.error("Failed to update medication in Airtable: ", err);
     }
   };
 
+  // Deleting a medication
   const deleteMedication = async (medToDeleteId: string) => {
     try {
       setMedications(medications.filter((med) => med.id !== medToDeleteId));
@@ -142,103 +255,34 @@ export default function MedicationsTab() {
     }
   };
 
-  const pickImageCamera = async () => {
-
-    try {
-      const { granted } = await ImagePicker.requestCameraPermissionsAsync();
-      if (!granted) {
-        alert("Camera permission is required to take photos.");
-        return;
-      }
-
-      let result = await ImagePicker.launchCameraAsync({
-        mediaTypes: "images",
-        allowsEditing: true,
-        base64: true,
-        allowsMultipleSelection: false,
-        quality: 1,
-      });
-
-      if (!result.canceled) {
-        console.log("[Camera] Image pick: Not cancelled.");
-        performOCR(result.assets[0].uri);
-      }
-
-    } catch (err) {
-      console.error("Error while picking image from camera: ", err);
-    }
-  };
-
-  const pickImageGallery = async () => {
-    try {
-      const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!granted) {
-        Alert.alert(
-          "Permission not granted.",
-          "Media library permission is required to select images.",
-          [
-            {
-              text: "Cancel",
-            },
-            {
-              text: "Open Settings",
-              onPress: () => {
-                Platform.OS === "ios" ? Linking.openURL("app-settings:") : Linking.openSettings();
-              },
-            },
-          ]
-        );
-      }
-    } catch (err) {
-      console.error("Error while picking image from gallery: ", err);
+  // OCR function
+  const handleOCR = async (source: "camera" | "gallery") => {
+    console.log("[APP OCR] Performing OCR...");
+    const uri = await pickImage(source);
+    if (!uri) {
+      console.error("[APP OCR] No URI retrieved");
+      return;
     }
 
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: "images",
-      allowsEditing: true,
-      base64: true,
-      allowsMultipleSelection: false,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      console.log("[Gallery] Image pick: Not cancelled.");
-      performOCR(result.assets[0].uri);
-    }
-  };
-
-  const performOCR = async (uri: string) => {
     setImage(uri);
     setLoading(true);
 
-    const formData = new FormData();
-    formData.append("file", {
-      uri,
-      name: "photo.jpg",
-      type: "image/jpeg",
-    } as any);
-
     try {
-      const response = await fetch(`${BACKEND_API_HOST}/ocr`, {
-        method: "POST",
-        headers: { "Content-Type": "multipart/form-data" },
-        body: formData,
-      });
+      const base64Image = await convertImageToBase64(uri);
+      const ocrResult = await performOCR(base64Image);
 
-      const data = await response.json();
-      console.log("Raw data: ", data);
-      console.log("Extracted text: ", data.extracted_text);
-      console.log("Medication info: ", data.medication_info);
-      setExtractedText(data.extracted_text);
-      const medInfo = data.medication_info;
+      console.log("Extracted text: ", ocrResult.text);
+      console.log("Medication info: ", ocrResult.medInfo);
+      setExtractedText(ocrResult.text);
+      const medInfo = JSON.parse(ocrResult.medInfo);
       setMedName(medInfo.medicine_name);
       setMedDosage(medInfo.dosage);
       setMedFrequency(medInfo.frequency);
       setMedDuration(medInfo.duration);
       setMedNotes(medInfo.additional_notes);
-      console.log("OCR completed");
+      console.log("[App OCR] OCR completed.");
     } catch (err) {
-      console.log("Fetch error: ", err);
+      console.log("OCR failed: ", err);
     } finally {
       setLoading(false);
     }
@@ -273,69 +317,174 @@ export default function MedicationsTab() {
           enableAutomaticScroll={(Platform.OS === "ios")}
         >
           <View style={styles.modalContent}>
-            <View style={styles.modalHeaderContainer}>
-              <TouchableOpacity onPress={() => setShowMedModal(false)}>
-                <Ionicons name="close" size={30} color="white" />
-              </TouchableOpacity>
-              <View style={{ flexDirection: "row" }}>
-                <TouchableOpacity style={{ paddingRight: 5 }} onPress={pickImageCamera}>
-                  <Ionicons name="camera" size={30} color="white" />
+            {/* Modal Header */}
+            {!showReminderModal && (
+              <View style={styles.modalHeaderContainer}>
+                <TouchableOpacity onPress={() => {setShowMedModal(false); setShowReminderModal(false); setMedReminderDays([]); setMedReminderTimes([]); setTempTime(new Date());}}>
+                  <Ionicons name="close" size={30} color="white" />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={pickImageGallery}>
-                  <Ionicons name="image" size={30} color="white" />
+                <View style={{ flexDirection: "row" }}>
+                  <TouchableOpacity style={{ paddingRight: 5 }} onPress={() => handleOCR("camera")}>
+                    <Ionicons name="camera" size={30} color="white" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleOCR("gallery")}>
+                    <Ionicons name="image" size={30} color="white" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )
+            }
+
+            {showReminderModal && (
+              <View style={styles.modalHeaderContainer}>
+                <TouchableOpacity onPress={() => {setShowMedModal(true); setShowReminderModal(false); setShowTimePicker(false);}}>
+                  <Ionicons name="chevron-back" size={30} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => {setShowMedModal(false); setShowReminderModal(false); setMedReminderDays([]); setMedReminderTimes([]); setTempTime(new Date());}}>
+                  <Ionicons name="close" size={30} color="white" />
                 </TouchableOpacity>
               </View>
-            </View>
-            <Text style={styles.modalTextInputLabels}>Name:</Text>
-            <TextInput
-              style={styles.modalTextInput}
-              placeholder="e.g. Aspirin"
-              value={medName}
-              onChangeText={setMedName}
-            />
-            <Text style={styles.modalTextInputLabels}>Dosage:</Text>
-            <TextInput
-              style={styles.modalTextInput}
-              placeholder="e.g. 2 pills"
-              value={medDosage}
-              onChangeText={setMedDosage}
-            />
-            <Text style={styles.modalTextInputLabels}>Frequency:</Text>
-            <TextInput
-              style={styles.modalTextInput}
-              placeholder="e.g. 1 pill every morning"
-              value={medFrequency}
-              onChangeText={setMedFrequency}
-            />
-            <Text style={styles.modalTextInputLabels}>Duration:</Text>
-            <TextInput
-              style={styles.modalTextInput}
-              placeholder="e.g. 2 weeks"
-              value={medDuration}
-              onChangeText={setMedDuration}
-            />
-            <Text style={styles.modalTextInputLabels}>Notes:</Text>
-            <TextInput
-              multiline
-              style={styles.modalTextInputMultiline}
-              placeholder="e.g. Take with food"
-              value={medNotes}
-              onChangeText={setMedNotes}
-            />
-            <View style={{ alignItems: "center", marginVertical: 12 }}>
-              <TouchableOpacity style={styles.modalButton} onPress={addOrUpdateMedication}>
-                <Text style={styles.modalButtonText}>
-                  {medToEditId ? "Save" : "Add"}
-                </Text>
-              </TouchableOpacity>
-              {medToEditId && (
-                  <TouchableOpacity style={styles.modalButton} onPress={() => deleteMedication(medToEditId)}>
-                    <Text style={styles.modalButtonText}>Delete</Text>
+            )
+            }
+
+            {/* Modal Body */}
+            {!showReminderModal ? (
+              <>
+                <Text style={styles.modalTextInputLabels}>Name:</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="e.g. Aspirin"
+                  value={medName}
+                  onChangeText={setMedName}
+                />
+                <Text style={styles.modalTextInputLabels}>Dosage:</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="e.g. 2 pills"
+                  value={medDosage}
+                  onChangeText={setMedDosage}
+                />
+                <Text style={styles.modalTextInputLabels}>Frequency:</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="e.g. 1 pill every morning"
+                  value={medFrequency}
+                  onChangeText={setMedFrequency}
+                />
+                <Text style={styles.modalTextInputLabels}>Duration:</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="e.g. 2 weeks"
+                  value={medDuration}
+                  onChangeText={setMedDuration}
+                />
+                <Text style={styles.modalTextInputLabels}>Notes:</Text>
+                <TextInput
+                  multiline
+                  style={styles.modalTextInputMultiline}
+                  placeholder="e.g. Take with food"
+                  value={medNotes}
+                  onChangeText={setMedNotes}
+                />
+
+                <View style={{ alignItems: "center", marginVertical: 12 }}>
+                  <TouchableOpacity style={styles.modalButton} onPress={() => setShowReminderModal(true)}>
+                    <Text style={styles.modalButtonText}>
+                      {medToEditId ? "Next: Edit Reminders" : "Next: Set Reminders"}
+                    </Text>
                   </TouchableOpacity>
+                  {medToEditId && (
+                      <TouchableOpacity style={styles.modalButton} onPress={() => deleteMedication(medToEditId)}>
+                        <Text style={styles.modalButtonText}>Delete</Text>
+                      </TouchableOpacity>
+                    )
+                  }
+                </View>
+
+                {loading && (<ActivityIndicator />)}
+              </>
+            ) : (
+              <>
+                <Text style={styles.modalTextInputLabels}>Reminder Days:</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 12, justifyContent: "center" }}>
+                  {daysOfWeek.map((day) => (
+                    <TouchableOpacity
+                      key={day}
+                      onPress={() => toggleDay(day)}
+                      style={[styles.modalReminderDayButton,
+                        { backgroundColor: medReminderDays.includes(day) ? "#060256" : "white",
+                          borderColor: medReminderDays.includes(day) ? "white" : "#060256" }
+                        ]}
+                    >
+                      <Text style={[styles.reminderModalText, { color: medReminderDays.includes(day) ? "white" : "#060256" }]}>{day}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={styles.modalTextInputLabels}>Reminder Times:</Text>
+                  <TouchableOpacity onPress={() => setShowTimePicker(true)}>
+                    <Ionicons name="add-circle" size={20} color="white" />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.medReminderTimesContainer}>
+                  {medReminderTimes.map((time, idx) => (
+                    <View key={idx} style={styles.medReminderTimeRow}>
+                      <Text style={[styles.reminderModalText, { color: "white" }]}>{time}</Text>
+                      <View style={{ flexDirection: "row" }}>
+                        <TouchableOpacity style={{ marginRight: 5 }} onPress={() => editReminderTime(time, idx)}>
+                          <Ionicons name="create-outline" size={15} color="white" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => deleteReminderTime(idx)}>
+                          <Ionicons name="trash-outline" size={15} color="white" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+
+                {showTimePicker && (
+                  <DateTimePicker
+                    mode="time"
+                    display="spinner"
+                    value={tempTime}
+                    onChange={onChangeTimePicker}
+                    themeVariant="dark"
+                  />
                 )
-              }
-            </View>
-            {loading && (<ActivityIndicator />)}
+                }
+
+                {showTimePicker && Platform.OS === "ios" && (
+                  <View style={{ flexDirection: "row", justifyContent: "space-around" }}>
+                    <TouchableOpacity onPress={() => { setShowTimePicker(false); setReminderTimeToEditId(null); }}>
+                      <Text style={{ color: "white" }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={confirmReminderTimeIOS}>
+                      <Text style={{ color: "white" }}>Confirm</Text>
+                    </TouchableOpacity>
+                  </View>
+                )
+                }
+                
+
+                <View style={{ alignItems: "center", marginVertical: 12 }}>
+                  <TouchableOpacity style={styles.modalButton} onPress={addOrUpdateMedication}>
+                    <Text style={styles.modalButtonText}>
+                      {medToEditId ? "Save" : "Add"}
+                    </Text>
+                  </TouchableOpacity>
+                  {medToEditId && (
+                      <TouchableOpacity style={styles.modalButton} onPress={() => deleteMedication(medToEditId)}>
+                        <Text style={styles.modalButtonText}>Delete</Text>
+                      </TouchableOpacity>
+                    )
+                  }
+                </View>
+              </>
+            )
+            }
+            
           </View>
         </KeyboardAwareScrollView>
       </Modal>
@@ -346,7 +495,7 @@ export default function MedicationsTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#d96922",
+    backgroundColor: "#EA6F1D",
     paddingTop: 48,
   },
   contentContainer: {
@@ -438,6 +587,45 @@ const styles = StyleSheet.create({
   modalButtonText: {
     color: "#060256",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
+  },
+  modalReminderDayButton: {
+    width: 35,
+    height: 35,
+    margin: 4,
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  reminderModalText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#060256",
+  },
+  reminderModalButton: {
+    backgroundColor: "white",
+    borderRadius: 8,
+    padding: 12,
+    alignItems: "center",
+    width: "60%",
+    marginTop: 10,
+    flexDirection: "row",
+  },
+  medReminderTimesContainer: {
+    flexDirection: "column",
+    flexWrap: "wrap",
+    paddingLeft: 5,
+  },
+  medReminderTimeRow: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "white",
+    borderRadius: 12,
+    padding: 10,
+    margin: 5,
+    justifyContent: "space-between",
+    width: "35%",
   },
 });
