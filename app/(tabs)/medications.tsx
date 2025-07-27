@@ -1,12 +1,11 @@
 import AirtableService from "@/airtable";
-import { BACKEND_API_HOST } from "@env";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { convertImageToBase64, performOCR, pickImage } from "../ocr";
 
 export default function MedicationsTab() {
   // Image OCR state
@@ -256,106 +255,34 @@ export default function MedicationsTab() {
     }
   };
 
-  // OCR from an image taken using camera
-  const pickImageCamera = async () => {
-
-    try {
-      const { granted } = await ImagePicker.requestCameraPermissionsAsync();
-      if (!granted) {
-        alert("Camera permission is required to take photos.");
-        return;
-      }
-
-      let result = await ImagePicker.launchCameraAsync({
-        mediaTypes: "images",
-        allowsEditing: true,
-        base64: true,
-        allowsMultipleSelection: false,
-        quality: 1,
-      });
-
-      if (!result.canceled) {
-        console.log("[Camera] Image pick: Not cancelled.");
-        performOCR(result.assets[0].uri);
-      }
-
-    } catch (err) {
-      console.error("Error while picking image from camera: ", err);
-    }
-  };
-
-  // OCR from an image chosen from gallery
-  const pickImageGallery = async () => {
-    try {
-      const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!granted) {
-        Alert.alert(
-          "Permission not granted.",
-          "Media library permission is required to select images.",
-          [
-            {
-              text: "Cancel",
-            },
-            {
-              text: "Open Settings",
-              onPress: () => {
-                Platform.OS === "ios" ? Linking.openURL("app-settings:") : Linking.openSettings();
-              },
-            },
-          ]
-        );
-      }
-    } catch (err) {
-      console.error("Error while picking image from gallery: ", err);
+  // OCR function
+  const handleOCR = async (source: "camera" | "gallery") => {
+    console.log("[APP OCR] Performing OCR...");
+    const uri = await pickImage(source);
+    if (!uri) {
+      console.error("[APP OCR] No URI retrieved");
+      return;
     }
 
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: "images",
-      allowsEditing: true,
-      base64: true,
-      allowsMultipleSelection: false,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      console.log("[Gallery] Image pick: Not cancelled.");
-      performOCR(result.assets[0].uri);
-    }
-  };
-
-  // OCR
-  const performOCR = async (uri: string) => {
     setImage(uri);
     setLoading(true);
 
-    const formData = new FormData();
-    formData.append("file", {
-      uri,
-      name: "photo.jpg",
-      type: "image/jpeg",
-    } as any);
-
     try {
-      const response = await fetch(`${BACKEND_API_HOST}/ocr`, {
-        method: "POST",
-        headers: { "Content-Type": "multipart/form-data" },
-        body: formData,
-      });
+      const base64Image = await convertImageToBase64(uri);
+      const ocrResult = await performOCR(base64Image);
 
-      const data = await response.json();
-      console.log("Raw data: ", data);
-      console.log("Extracted text: ", data.extracted_text);
-      console.log("Medication info: ", data.medication_info);
-      setExtractedText(data.extracted_text);
-      const medInfo = data.medication_info;
+      console.log("Extracted text: ", ocrResult.text);
+      console.log("Medication info: ", ocrResult.medInfo);
+      setExtractedText(ocrResult.text);
+      const medInfo = JSON.parse(ocrResult.medInfo);
       setMedName(medInfo.medicine_name);
       setMedDosage(medInfo.dosage);
       setMedFrequency(medInfo.frequency);
       setMedDuration(medInfo.duration);
       setMedNotes(medInfo.additional_notes);
-      console.log("OCR completed");
+      console.log("[App OCR] OCR completed.");
     } catch (err) {
-      console.log("Fetch error: ", err);
+      console.log("OCR failed: ", err);
     } finally {
       setLoading(false);
     }
@@ -397,10 +324,10 @@ export default function MedicationsTab() {
                   <Ionicons name="close" size={30} color="white" />
                 </TouchableOpacity>
                 <View style={{ flexDirection: "row" }}>
-                  <TouchableOpacity style={{ paddingRight: 5 }} onPress={pickImageCamera}>
+                  <TouchableOpacity style={{ paddingRight: 5 }} onPress={() => handleOCR("camera")}>
                     <Ionicons name="camera" size={30} color="white" />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={pickImageGallery}>
+                  <TouchableOpacity onPress={() => handleOCR("gallery")}>
                     <Ionicons name="image" size={30} color="white" />
                   </TouchableOpacity>
                 </View>
