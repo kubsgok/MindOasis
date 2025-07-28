@@ -1,50 +1,151 @@
-# Welcome to your Expo app 👋
+# MindOasis
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A cross‑platform mobile app built with **Expo Router** and backed by a Python/FastAPI + Airtable backend. MindOasis helps users journal, track medications, manage events, and connect with peers through a “JumBuddy” feature.
 
-## Get started
+---
 
-1. Install dependencies
+## 🚀 Features
 
-   ```bash
-   npm install
-   ```
+* **Authentication**
+  Sign up & log in; secure session stored via AsyncStorage.
+* **Dashboard**
+  Calendar view of upcoming events, custom event cards.
+* **Journaling**
+  • Daily prompts
+  • Free‑write editor
+  • Calendar‑based history of past entries
+* **Medications**
+  • OCR‑powered med info extraction (upload prescription images)
+  • Manually add/edit medications
+* **JumBuddy (Friends)**
+  • Browse & connect with peers
+  • Placeholder avatars via DiceBear API
+* **Profile**
+  • Customize avatar (eyes, hair, colors)
+  • View & edit personal details
+* **Backend OCR & AI**
+  • Python/FastAPI service using Tesseract & LangChain for med‑info parsing
+* **Airtable Integration**
+  • All data stored in Airtable tables (Users, JournalEntries, Medications, Prompts)
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## 🛠 Tech Stack
 
-In the output, you'll find options to open the app in a
+* **Frontend:**
+  • React Native, Expo Router
+  • Tailwind (via nativewind) for styling
+  • React Navigation (Tabs)
+* **Backend:**
+  • FastAPI (Python)
+  • pytesseract & Pillow for OCR
+  • LangChain + OpenAI for structured text parsing
+* **Data Storage:**
+  • Airtable (via axios in `airtable.js`)
+* **Utilities:**
+  • AsyncStorage (local)
+  • Expo asset pipeline (images & fonts)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 📁 Project Structure
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+MindOasis-main/
+├─ app/                 # Expo Router pages (tabs)
+│  └─ (tabs)/
+│     ├─ _layout.tsx    # Tab navigator
+│     ├─ dashboard.tsx
+│     ├─ home.tsx
+│     ├─ journaling.tsx
+│     └─ medications.tsx
+├─ backend/
+│  └─ app.py            # FastAPI OCR & AI service
+├─ components/          # Shared UI components
+├─ assets/              # Images & fonts
+├─ hooks/               # Custom React hooks
+├─ constants/           # Color & theme constants
+├─ airtable.js          # Airtable service module
+├─ package.json
+├─ tsconfig.json
+└─ README.md
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-## Learn more
+## ⚡ Getting Started
 
-To learn more about developing your project with Expo, look at the following resources:
+### Prerequisites
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+* **Node.js** ≥16
+* **Yarn** or npm
+* **Expo CLI** (`npm install -g expo-cli`)
+* **Python 3.8+** (for backend)
+* **Tesseract OCR** installed on your system
+* **Airtable API key** & **Base IDs** in `airtable.js`
+* **OpenAI API key** & **TESSERACT\_PATH** in `backend/.env`
 
-## Join the community
+### 1. Clone & Install
 
-Join our community of developers creating universal apps.
+```bash
+git clone <your-repo-url>
+cd MindOasis-main
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+# Frontend deps
+npm install  
+# or
+yarn
+```
+
+### 2. Configure Environment
+
+* **Airtable**: edit `airtable.js` with your `BASE_ID`, `USER_TABLE_ID` and `API_TOKEN`.
+* **Backend**: create `backend/.env`:
+
+  ```
+  OPENAI_API_KEY=sk-...
+  TESSERACT_PATH=/usr/bin/tesseract   # or wherever tesseract is installed
+  ```
+
+### 3. Run Backend
+
+```bash
+cd backend
+pip install fastapi uvicorn python-dotenv pillow pytesseract langchain-openai
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 4. Run Mobile App
+
+In the project root:
+
+```bash
+expo start
+```
+
+* Scan the QR code with Expo Go (iOS/Android) or run simulators.
+
+---
+
+## 📦 Airtable Schema
+
+**Users** | **JournalEntries** | **Prompts** | **Medications**
+Link records between tables, store fields like `Content`, `Date`, `Mood`, `MedicationInfo`, etc.
+
+*(Refer to the “Airtable breakdown” section in docs or your project wiki.)*
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repo
+2. Create a feature branch (`git checkout -b feat/your-feature`)
+3. Commit your changes (`git commit -m "feat: ..."`)
+4. Push (`git push origin feat/your-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+MIT © Your Name / Organization
