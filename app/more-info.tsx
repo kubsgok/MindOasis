@@ -292,19 +292,19 @@ export default function MoreInfoPage() {
             {!showReminderModal ? (
               <>
                 <Text style={styles.modalTextInputLabels}>Name:</Text>
-                <TextInput
+            <TextInput
                   style={styles.modalTextInput}
                   placeholder="e.g. Aspirin"
-                  value={medName}
-                  onChangeText={setMedName}
-                />
+              value={medName}
+              onChangeText={setMedName}
+            />
                 <Text style={styles.modalTextInputLabels}>Dosage:</Text>
-                <TextInput
+            <TextInput
                   style={styles.modalTextInput}
                   placeholder="e.g. 2 pills"
-                  value={medDosage}
-                  onChangeText={setMedDosage}
-                />
+              value={medDosage}
+              onChangeText={setMedDosage}
+            />
                 <Text style={styles.modalTextInputLabels}>Frequency:</Text>
                 <TextInput
                   style={styles.modalTextInput}
@@ -403,12 +403,12 @@ export default function MoreInfoPage() {
                   <TouchableOpacity style={styles.modalButton} onPress={addMedication}>
                     <Text style={styles.modalButtonText}>Add</Text>
                   </TouchableOpacity>
-                </View>
+            </View>
               </>
             )
             }
             
-          </View>
+        </View>
         </KeyboardAwareScrollView>
       </Modal>
     </KeyboardAwareScrollView>
