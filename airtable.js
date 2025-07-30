@@ -59,14 +59,20 @@ const AirtableService = {
    */
   addUser: async (fields) => {
     try {
+      console.log("Adding user with fields:", fields);
       const response = await axios.post(
         AIRTABLE_URL,
         { records: [{ fields }] },
         { headers: { Authorization: `Bearer ${API_TOKEN}`, "Content-Type": "application/json" } }
       );
+      console.log("User added successfully:", response.data);
       return response.data.records;
     } catch (error) {
       console.error("Error adding user record:", error);
+      if (error.response) {
+        console.error("Error response data:", error.response.data);
+        console.error("Error response status:", error.response.status);
+      }
       return null;
     }
   },

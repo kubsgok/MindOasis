@@ -44,8 +44,18 @@ const SignUpPage: React.FC<SignUpProps> = ({ setLoggedIn, setUserId, onShowLogin
       return;
     }
     try {
-      const fields = { name, email, password, 'date of birth': dob };
+      const fields = { 
+        name, 
+        email, 
+        password, 
+        'date of birth': dob,
+        'pethealth': 80 // Set default health value
+      };
       const result = await AirtableService.addUser(fields);
+      if (!result || result.length === 0) {
+        setError('Sign-up failed. Please try again.');
+        return;
+      }
       const id = result[0].id;
       await AsyncStorage.setItem('logged_in', 'true');
       await AsyncStorage.setItem('user_id', id);
@@ -53,18 +63,18 @@ const SignUpPage: React.FC<SignUpProps> = ({ setLoggedIn, setUserId, onShowLogin
       setLoggedIn('true');
       router.replace('../more-info');
     } catch (e) {
-      console.error(e);
-      setError('Sign-up failed. Try again.');
+      console.error('Sign-up error:', e);
+      setError('Sign-up failed. Please try again.');
     }
   };
 
   const onChangeDate = (_event: any, selectedDate?: Date) => {
     const current = selectedDate || date;
     setDate(current);
-    const dd = String(current.getDate()).padStart(2, '0');
     const mm = String(current.getMonth() + 1).padStart(2, '0');
+    const dd = String(current.getDate()).padStart(2, '0');
     const yyyy = current.getFullYear();
-    setDob(`${dd}-${mm}-${yyyy}`);
+    setDob(`${mm}/${dd}/${yyyy}`);
   };
 
   return (
@@ -107,7 +117,7 @@ const SignUpPage: React.FC<SignUpProps> = ({ setLoggedIn, setUserId, onShowLogin
             !dob && styles.placeholder,
             { lineHeight: 48, textAlignVertical: 'center' }
         ]}>
-          {dob || 'dd-mm-yyyy'}
+          {dob || 'mm/dd/yyyy'}
         </Text>
       </TouchableOpacity>
 
