@@ -598,7 +598,7 @@ const styles = StyleSheet.create({
     top: 40,
   },
   medsSection: {
-    backgroundColor: '#7B8DF2',
+    backgroundColor: '#5A86AD',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingTop: 32,
