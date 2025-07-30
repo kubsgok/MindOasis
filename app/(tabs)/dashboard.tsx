@@ -34,6 +34,7 @@ export default function DashboardTab() {
   const [userId, setUserId] = useState('');
   const [journalData, setJournalData] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [adherenceData, setAdherenceData] = useState<{ total: number; taken: number; percentage: number }>({ total: 0, taken: 0, percentage: 0 });
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -79,6 +80,9 @@ export default function DashboardTab() {
 
         setJournalData(map);
         setEntryMap(entryMap);
+        
+        // Calculate adherence
+        await calculateAdherence();
       } catch (e) {
         setJournalData({});
         setEntryMap({});
@@ -142,6 +146,44 @@ export default function DashboardTab() {
     );
   };
 
+  // Function to calculate medication adherence
+  const calculateAdherence = async () => {
+    if (!userId) return;
+    
+    try {
+      const medications = await AirtableService.getMedicationsForUser(userId);
+      const today = new Date();
+      const currentDay = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa'][today.getDay()];
+      const todayStr = today.toISOString().split('T')[0];
+      
+      // Get today's medications
+      const todayMeds = medications.filter((med: any) => {
+        if (!med.reminderDays || med.reminderDays.length === 0) {
+          return true; // Show every day if no specific days set
+        }
+        return med.reminderDays.includes(currentDay);
+      });
+      
+      // Count taken medications
+      let takenCount = 0;
+      for (const med of todayMeds) {
+        const doneKey = `${med.name}:done`;
+        const doneVal = await AsyncStorage.getItem(doneKey);
+        if (doneVal === todayStr) {
+          takenCount++;
+        }
+      }
+      
+      const total = todayMeds.length;
+      const percentage = total > 0 ? Math.round((takenCount / total) * 100) : 0;
+      
+      setAdherenceData({ total, taken: takenCount, percentage });
+    } catch (error) {
+      console.error('Error calculating adherence:', error);
+      setAdherenceData({ total: 0, taken: 0, percentage: 0 });
+    }
+  };
+
   // Function to fetch prompt text by ID
   const fetchPromptText = async (promptId: string) => {
     try {
@@ -165,6 +207,7 @@ export default function DashboardTab() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Mood Calendar</Text>
+      
       <View style={styles.pickerRow}>
         {/* Month Picker */}
         {Platform.OS === 'ios' ? (
@@ -254,6 +297,21 @@ export default function DashboardTab() {
           </View>
         </View>
       )}
+      
+      {/* Medication Adherence Bar - Below Calendar */}
+      <View style={styles.adherenceContainer}>
+        <Text style={styles.adherenceTitle}>Today's Medication Adherence</Text>
+        <View style={styles.adherenceBarContainer}>
+          <View style={styles.adherenceBarBg}>
+            <View style={[styles.adherenceBarFill, { width: `${adherenceData.percentage}%` }]} />
+          </View>
+          <Text style={styles.adherenceText}>{adherenceData.percentage}%</Text>
+        </View>
+        <Text style={styles.adherenceSubtext}>
+          {adherenceData.taken} of {adherenceData.total} medications taken
+        </Text>
+      </View>
+      
       {/* Modal for journal entry */}
       <Modal
         visible={modalVisible}
@@ -425,5 +483,57 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  adherenceContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 8,
+    marginTop: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  adherenceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EA6F1D',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  adherenceBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  adherenceBarBg: {
+    flex: 1,
+    height: 20,
+    backgroundColor: '#E6E6E6',
+    borderRadius: 10,
+    marginRight: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  adherenceBarFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 9,
+  },
+  adherenceText: {
+    color: '#4CAF50',
+    fontWeight: 'bold',
+    fontSize: 16,
+    minWidth: 40,
+    textAlign: 'right',
+  },
+  adherenceSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

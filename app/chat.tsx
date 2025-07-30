@@ -135,7 +135,7 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
               style={styles.petPhotoContainer}
               onPress={() => console.log("Pet profile photo tapped")} // TO-DO: Link to chat history
             >
-              <Image source={require("../assets/images/cat.png")} style={styles.petPhoto}/>
+              <Image source={petAvatar} style={styles.petPhoto}/>
             </TouchableOpacity>
         </View>
 

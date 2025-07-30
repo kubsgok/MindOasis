@@ -45,7 +45,7 @@ export default function HomeTab() {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [overdueMedications, setOverdueMedications] = useState<Medication[]>([]);
   const [allMedications, setAllMedications] = useState<Medication[]>([]); // Store all medications
-  const [health, setHealth] = useState<number>(80); // Default, will update from user record if present
+  const [health, setHealth] = useState<number>(70); // Default health starts at 70
   const [loading, setLoading] = useState(true);
   const [medStatus, setMedStatus] = useState<{ [medName: string]: { done: boolean; timestamp: string } }>({});
   const [currentDay, setCurrentDay] = useState<string>('');
@@ -54,6 +54,11 @@ export default function HomeTab() {
   // Modal state
   const [showMedDetailsModal, setShowMedDetailsModal] = useState<boolean>(false);
   const [selectedMedication, setSelectedMedication] = useState<Medication | null>(null);
+
+  // Health model constants
+  const DAILY_REWARD = 10; // Points for perfect adherence
+  const DAILY_PENALTY = 15; // Points for zero adherence
+  const STARTING_HEALTH = 70; // Starting health for all users
 
   // Helper to get today's date string
   const todayStr = dayjs().format('YYYY-MM-DD');
@@ -77,6 +82,35 @@ export default function HomeTab() {
       // Otherwise, only show if today is in the reminder days
       return med.reminderDays.includes(currentDay);
     });
+  };
+
+  // Calculate health based on medication adherence for the entire day
+  const calculateDailyHealthUpdate = async (medications: Medication[]) => {
+    const todayMeds = getTodayMedications(medications);
+    if (todayMeds.length === 0) return 0; // No medications scheduled for today
+    
+    const totalDoses = todayMeds.length;
+    let dosesTaken = 0;
+    
+    // Check each medication's completion status for today
+    for (const med of todayMeds) {
+      const doneKey = `${med.name}:done`;
+      const doneVal = await AsyncStorage.getItem(doneKey);
+      if (doneVal === todayStr) {
+        dosesTaken++;
+      }
+    }
+    
+    const adherenceRatio = dosesTaken / totalDoses;
+    
+    // Calculate health delta based on adherence ratio
+    const delta = (adherenceRatio * DAILY_REWARD) - ((1 - adherenceRatio) * DAILY_PENALTY);
+    return delta;
+  };
+
+  // Clamp health value between 0 and 100
+  const clampHealth = (health: number) => {
+    return Math.max(0, Math.min(100, health));
   };
 
   // Get overdue medications for today only (with 15-minute grace period)
@@ -119,10 +153,10 @@ export default function HomeTab() {
       // Fetch all users and find the current user by ID
       const users: { id: string; fields: UserFields }[] = await AirtableService.getAllUsers();
       const userRecord = users.find((u: { id: string; fields: UserFields }) => u.id === userId);
-      let currentHealth = 80;
+      let currentHealth = STARTING_HEALTH;
       if (userRecord) {
         setUser(userRecord.fields);
-        currentHealth = userRecord.fields.health || 80;
+        currentHealth = userRecord.fields.health || STARTING_HEALTH;
         const avatarObj = avatars.find((a: { name: string; src: any }) => a.name === userRecord.fields.avatar);
         setAvatarSrc(avatarObj ? avatarObj.src : avatars[0].src);
       }
@@ -135,13 +169,15 @@ export default function HomeTab() {
       const today = getCurrentDayOfWeek();
       setCurrentDay(today);
       
-      // Filter medications for today
-      const todayMeds = getTodayMedications(meds);
-      setMedications(todayMeds);
-      
-      // Get overdue medications
+      // Get overdue medications first
       const overdueMeds = getOverdueMedications(meds);
       setOverdueMedications(overdueMeds);
+      
+      // Filter medications for today, excluding overdue ones
+      const todayMeds = getTodayMedications(meds).filter(med => 
+        !overdueMeds.some(overdueMed => overdueMed.id === med.id)
+      );
+      setMedications(todayMeds);
       
       // Load medication status from AsyncStorage for today's medications
       const medStatusObj: { [medName: string]: { done: boolean; timestamp: string } } = {};
@@ -157,37 +193,8 @@ export default function HomeTab() {
       }
       setMedStatus(medStatusObj);
       
-      // Check yesterday's completion for all meds (not just today's)
-      let allDoneYesterday = true;
-      for (const med of meds) {
-        const tsKey = `${med.name}:timestamp`;
-        const tsVal = await AsyncStorage.getItem(tsKey);
-        if (tsVal !== yesterdayStr) {
-          allDoneYesterday = false;
-          break;
-        }
-      }
-      
-      // Update health if needed
-      let newHealth = currentHealth;
-      let healthChanged = false;
-      if (userRecord) {
-        if (allDoneYesterday) {
-          if (currentHealth < 100) {
-            newHealth = Math.min(currentHealth + 10, 100);
-            healthChanged = true;
-          }
-        } else {
-          if (currentHealth > 0) {
-            newHealth = Math.max(currentHealth - 10, 0);
-            healthChanged = true;
-          }
-        }
-        if (healthChanged) {
-          setHealth(newHealth);
-          await AirtableService.updateRecord(userId, { pethealth: newHealth });
-        }
-      }
+              // Set current health without updating (health updates only at end of day)
+        setHealth(currentHealth);
     } catch (err) {
       console.error('Failed to refresh home data:', err);
     } finally {
@@ -207,6 +214,18 @@ export default function HomeTab() {
     }, [])
   );
 
+  // Set up timer to check for end-of-day health updates
+  useEffect(() => {
+    const checkEndOfDay = () => {
+      checkEndOfDayHealthUpdate();
+    };
+    
+    // Check every minute
+    const interval = setInterval(checkEndOfDay, 60000);
+    
+    return () => clearInterval(interval);
+  }, [allMedications]);
+
   // Update medications when day changes
   useEffect(() => {
     if (allMedications.length > 0) {
@@ -220,9 +239,18 @@ export default function HomeTab() {
         const overdueMeds = getOverdueMedications(allMedications);
         setOverdueMedications(overdueMeds);
         
+        // Filter medications for today, excluding overdue ones
+        const filteredTodayMeds = getTodayMedications(allMedications).filter(med => 
+          !overdueMeds.some(overdueMed => overdueMed.id === med.id)
+        );
+        setMedications(filteredTodayMeds);
+        
         // Reset medication status for new day
         const newMedStatus: { [medName: string]: { done: boolean; timestamp: string } } = {};
         for (const med of todayMeds) {
+          newMedStatus[med.name] = { done: false, timestamp: '' };
+        }
+        for (const med of overdueMeds) {
           newMedStatus[med.name] = { done: false, timestamp: '' };
         }
         setMedStatus(newMedStatus);
@@ -240,18 +268,20 @@ export default function HomeTab() {
       // Uncheck the medication
       await AsyncStorage.removeItem(doneKey);
       await AsyncStorage.removeItem(tsKey);
-      setMedStatus((prev) => ({
-        ...prev,
+      const newMedStatus = {
+        ...medStatus,
         [medName]: { done: false, timestamp: '' },
-      }));
+      };
+      setMedStatus(newMedStatus);
     } else {
       // Check the medication
       await AsyncStorage.setItem(doneKey, todayStr);
       await AsyncStorage.setItem(tsKey, todayStr);
-      setMedStatus((prev) => ({
-        ...prev,
+      const newMedStatus = {
+        ...medStatus,
         [medName]: { done: true, timestamp: todayStr },
-      }));
+      };
+      setMedStatus(newMedStatus);
     }
   };
 
@@ -265,6 +295,40 @@ export default function HomeTab() {
   const closeMedDetailsModal = () => {
     setShowMedDetailsModal(false);
     setSelectedMedication(null);
+  };
+
+  // Check if it's end of day (11:59 PM) and update health accordingly
+  const checkEndOfDayHealthUpdate = async () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    // Check if it's 11:59 PM
+    if (currentHour === 23 && currentMinute === 59) {
+      try {
+        const userId = await AsyncStorage.getItem('user_id');
+        if (!userId) return;
+        
+        // Get current health from Airtable
+        const users = await AirtableService.getAllUsers();
+        const userRecord = users.find((u: { id: string; fields: UserFields }) => u.id === userId);
+        if (!userRecord) return;
+        
+        const currentHealth = userRecord.fields.health || STARTING_HEALTH;
+        
+        // Calculate health based on today's adherence
+        const healthDelta = await calculateDailyHealthUpdate(allMedications);
+        const newHealth = clampHealth(currentHealth + healthDelta);
+        
+        // Update health in Airtable
+        await AirtableService.updateRecord(userId, { pethealth: newHealth });
+        setHealth(newHealth);
+        
+        console.log(`End of day health update: ${currentHealth} -> ${newHealth} (delta: ${healthDelta})`);
+      } catch (error) {
+        console.error('Error updating end of day health:', error);
+      }
+    }
   };
 
   // Health bar width calculation
@@ -455,7 +519,7 @@ const styles = StyleSheet.create({
     paddingTop: 32,
     paddingHorizontal: 24,
     paddingBottom: 12,
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   menuIcon: {
     marginBottom: 16,
@@ -464,13 +528,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+    justifyContent: 'center',
   },
   healthBarBg: {
-    width: 160,
-    height: 20,
+    width: 200,
+    height: 24,
     backgroundColor: '#E6E6E6',
-    borderRadius: 8,
-    marginRight: 8,
+    borderRadius: 12,
+    marginRight: 12,
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: '#A63D3D',
@@ -479,7 +544,7 @@ const styles = StyleSheet.create({
   healthBarFill: {
     height: '100%',
     backgroundColor: '#A63D3D',
-    borderRadius: 8,
+    borderRadius: 10,
     position: 'absolute',
     left: 0,
     top: 0,
@@ -487,7 +552,7 @@ const styles = StyleSheet.create({
   healthText: {
     color: '#A63D3D',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 18,
   },
   petSection: {
     alignItems: 'center',
