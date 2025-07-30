@@ -209,6 +209,8 @@ export default function MedicationsTab() {
           User: [ userId ],
         });
 
+        console.log('Fields being sent to Airtable:', result);
+
         const medRecordId = result?.[0]?.id;
         if (!medRecordId) throw new Error("No medication record ID returned");
 

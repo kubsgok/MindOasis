@@ -3,11 +3,15 @@ import axios from "axios";
 const BASE_ID = "applqO7LmDa1HLTEs";
 const USER_TABLE_ID = "tbl0LJPveJGeu7SK2";
 const MED_TABLE_ID = "tblXldXDqZIrFgyTm";
+const JOURNAL_TABLE_ID = "tblNZajAGEiNSdU4U";
+const PROMPT_TABLE_ID = "tblMoSlXmwjBqICGV";
 const API_TOKEN = "patI8m8TdxXWzYg4Y.458904d2c40c330ec243a55e51a3439cd9983fe73ad66111f08ed10cb567e5b6";
 
 // Base URL for Airtable API
 const AIRTABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${USER_TABLE_ID}`;
 const MED_TABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${MED_TABLE_ID}`;
+const JOURNAL_TABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${JOURNAL_TABLE_ID}`;
+const PROMPT_TABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${PROMPT_TABLE_ID}`;
 
 const AirtableService = {
   /**
@@ -201,6 +205,64 @@ const AirtableService = {
     } catch (e) {
       console.error("Error deleting medication: ", e);
       return false;
+    }
+  },
+
+  /**
+   * Add a new journal entry
+   * @param {Object} fields - Field values for the journal entry (User, Date, Response, Prompt Used, Scale, Emotions, etc.)
+   */
+  addJournalEntry: async (fields) => {
+    try {
+      const response = await axios.post(
+        JOURNAL_TABLE_URL,
+        { records: [{ fields }] },
+        { headers: { Authorization: `Bearer ${API_TOKEN}`, 'Content-Type': 'application/json' } }
+      );
+      return response.data.records;
+    } catch (e) {
+      console.error('Error adding journal entry:', e);
+      return null;
+    }
+  },
+
+  /**
+   * Fetch all prompt records from the Prompt table
+   */
+  getAllPrompts: async () => {
+    try {
+      const response = await axios.get(PROMPT_TABLE_URL, {
+        headers: {
+          Authorization: `Bearer ${API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      return response.data.records;
+    } catch (error) {
+      console.error('Error fetching prompts:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Fetch all journal entries for a given user
+   * @param {string} userId
+   */
+  getAllJournalEntriesForUser: async (userId) => {
+    try {
+      // First, let's try to get all entries without filtering to see what we get
+      const url = `${JOURNAL_TABLE_URL}`;
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('All journal entries (no filter):', JSON.stringify(response.data.records, null, 2));
+      return response.data.records;
+    } catch (error) {
+      console.error('Error fetching journal entries for user:', error);
+      return [];
     }
   },
 };
