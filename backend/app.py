@@ -10,7 +10,6 @@ from langchain.schema.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.output_parsers.json import SimpleJsonOutputParser
 from typing import List, Tuple
-from PIL import Image
 from huaweicloudsdkcore.auth.credentials import BasicCredentials
 from huaweicloudsdkocr.v1.region.ocr_region import OcrRegion
 from huaweicloudsdkcore.exceptions import exceptions
@@ -69,7 +68,7 @@ class LLMEvaluator:
         self.parser = SimpleJsonOutputParser()
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", (
-                "You are a mental health chatbot response evaluator. Your job is to assess a proposed response to a user's message based on 3 binary criteria.\n"
+                "You are a mental health chatbot response evaluator. Your job is to assess a proposed response to a user's message based on 4 binary criteria.\n"
                 "Evaluate the proposed response by answering the following questions with true or false (boolean), followed by a short explanation.\n\n"
                 "1. Emotional tone:\n"
                 "- If the user's message is not facts-related, was the chatbot's response emotionally warm and empathetic?\n\n"
@@ -77,15 +76,19 @@ class LLMEvaluator:
                 "- Did the chatbot provide helpful, relevant, and accurate support?\n\n"
                 "3. Safety:\n"
                 "- Did the chatbot's response raise any safety concerns?\n\n"
+                "4. Conciseness and Length:\n"
+                "- Is the chatbot's response concise, and 1 to 3 sentences long?"
                 "Always respond in valid JSON format:\n"
                 "{{\n"
                 """    "emotional_tone": boolean,\n"""
                 """    "helpful": boolean,\n"""
                 """    "safety_concern": boolean,\n"""
+                """    "conciseness_length": boolean,\n"""
                 """    "comments": {{\n"""
                 """        "emotional_tone": string,\n"""
                 """        "helpful": string,\n"""
-                """        "safety_concern": string\n"""
+                """        "safety_concern": string,\n"""
+                """        "conciseness_length": string\n"""
                 "    }}\n"
                 "}}\n\n"
                 "Here are some examples of the expected output format:\n"
@@ -94,10 +97,12 @@ class LLMEvaluator:
                 """    "emotional_tone": false,\n"""
                 """    "helpful": true,\n"""
                 """    "safety_concern": false,\n"""
+                """    "conciseness_length": true,\n"""
                 """    "comments": {{\n"""
                 """        "emotional_tone": "The chatbot sounded robotic and did not acknowledge the user's feelings.",\n"""
                 """        "helpful": "The chatbot provided a useful suggestion about medication timing.",\n"""
-                """        "safety_concern": "No safety issues were present."\n"""
+                """        "safety_concern": "No safety issues were present.",\n"""
+                """        "conciseness_length": "The chatbot response was concise, and 3 sentences long."\n"""
                 """    }}\n"""
                 "}}\n\n"
                 "Example 2:\n"
@@ -105,13 +110,15 @@ class LLMEvaluator:
                 """    "emotional_tone": true,\n"""
                 """    "helpful": true,\n"""
                 """    "safety_concern": false,\n"""
+                """    "conciseness_length": false,\n"""
                 """    "comments": {{\n"""
                 """        "emotional_tone": "The chatbot acknowledged the user's feelings and gave advice in a gentle, warm tone.",\n"""
                 """        "helpful": "The chatbot referred the user to the appropriate medical party.",\n"""
                 """        "safety_concern": "No safety issues were present."\n"""
+                """        "conciseness_length": "The chatbot response was lengthy, being more than 3 sentences long."\n"""
                 """    }}\n"""
                 """}}\n\n"""
-                """Your output in JSON format have to always and only contain the following keys: "emotional_tone", "helpful", "safety_concern", and "comments".\n"""
+                """Your output in JSON format have to always and only contain the following keys: "emotional_tone", "helpful", "safety_concern", "conciseness_length", and "comments".\n"""
             )),
              ("human", "User message:\n{user_msg}\n\nProposed response:\n{initial_response}\n\nEvaluate the proposed response to the user's message.")
         ])
@@ -129,10 +136,12 @@ class LLMEvaluator:
                 "emotional_tone": True,
                 "helpful": True,
                 "safety_concern": False,
+                "conciseness_length": True,
                 "comments": {
                     "emotional_tone": "No comments as evaluator failed to run",
                     "helpful": "No comments as evaluator failed to run",
-                    "safety_concern": "No comments as evaluator failed to run"
+                    "safety_concern": "No comments as evaluator failed to run",
+                    "conciseness_length": "No comments as evaluator failed to run"
                 }
             }
         
@@ -148,7 +157,7 @@ class LLMRevisor:
                 "- Be emotionally warm and empathetic (if emotional_tone was flagged as False)\n"
                 "- Be helpful, relevant, and accurate (if helpful was flagged as False)\n"
                 "- Avoid unsafe or potentially triggering content (if safety_concern was flagged as True)\n"
-                "- Be between 1 to 3 sentences long\n"
+                "- Be 1 to 3 sentences long\n"
                 "- Avoid clinical or judgmental phrasing\n"
                 "- Use warm, validating, and youth-friendly language\n\n"
                 "Return ONLY the revised message as plain text. Do NOT include explanations or meta-comments."
@@ -166,8 +175,8 @@ class LLMRevisor:
         try:
             chain = self.prompt | self.llm
             result = chain.invoke({"user_msg": user_msg, "initial_response": initial_response, "evaluation_json": evaluation_json})
-            print("[LLM REVISOR] Revised chatbot response: ", result)
-            return result
+            print("[LLM REVISOR] Revised chatbot response: ", result.content)
+            return result.content
         except Exception as e:
             print("[ERROR] Failed to revise initial chatbot response, returning initial response: ", e)
             return initial_response
@@ -270,7 +279,8 @@ async def chat(req: ChatRequest):
         needs_revision = (
             not evaluation_result["emotional_tone"] or
             not evaluation_result["helpful"] or
-            evaluation_result["safety_concern"]
+            evaluation_result["safety_concern"] or
+            not evaluation_result["conciseness_length"]
         )
 
         if needs_revision:
