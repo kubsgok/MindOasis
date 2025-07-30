@@ -1,14 +1,7 @@
 import KeyboardAvoidingViewContainer from "@/components/KeyboardAvoidingViewContainer";
-<<<<<<< HEAD
-import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from '@react-native-async-storage/async-storage';
-// import Voice from '@react-native-voice/voice';
-import { GROQ_API_KEY } from '@env';
-=======
 import { GROQ_API_KEY } from "@env";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
->>>>>>> origin/main
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, Keyboard, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -32,50 +25,6 @@ const avatars = [
   { name: 'cat2', src: require('../assets/avatars/cat2.png') },
 ];
 
-<<<<<<< HEAD
-export default function Chat({ medications: propMeds }: { medications?: any[] }) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState<string>("")
-  const [textInputHeight, setTextInputHeight] = useState(60)
-  const [medications, setMedications] = useState<any[]>(propMeds || []);
-  const [petAvatar, setPetAvatar] = useState<any>(avatars[0].src); // default to cat
-  // const [isListening, setIsListening] = useState(false);
-
-  const router = useRouter();
-
-  // Voice event handlers
-  // useEffect(() => {
-  //   Voice.onSpeechStart = () => setIsListening(true);
-  //   Voice.onSpeechEnd = () => setIsListening(false);
-  //   Voice.onSpeechResults = (event: any) => {
-  //     if (event.value && event.value.length > 0) {
-  //       setInput(event.value[0]);
-  //     }
-  //   };
-  //   return () => {
-  //     Voice.destroy().then(Voice.removeAllListeners);
-  //   };
-  // }, []);
-
-  // const startListening = async () => {
-  //   try {
-  //     setInput("");
-  //     await Voice.start('en-US');
-  //   } catch (e) {
-  //     setIsListening(false);
-  //   }
-  // };
-
-  // const stopListening = async () => {
-  //   try {
-  //     await Voice.stop();
-  //     setIsListening(false);
-  //   } catch (e) {
-  //     setIsListening(false);
-  //   }
-  // };
-
-=======
 export default function Chat({ medications: propMeds }: { medications?: any[] }) { 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>("");
@@ -84,7 +33,6 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
 
   const router = useRouter();
 
->>>>>>> origin/main
   // Fetch medications if not passed as prop
   useEffect(() => {
     if (!propMeds) {
@@ -121,15 +69,6 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
       }
     })();
   }, []);
-<<<<<<< HEAD
-
-  const handleContentSizeChange = (event: {
-    nativeEvent: { contentSize: { height: number }};
-  }) => {
-    setTextInputHeight(Math.max(event.nativeEvent.contentSize.height, 40))
-  };
-=======
->>>>>>> origin/main
 
   const handleSubmit = async () => {
     setInput("");
@@ -140,13 +79,6 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-<<<<<<< HEAD
-      // Prepare system prompt with medication data
-      const medList = medications && medications.length
-        ? `The user's medications are: ${medications.map(m => m.name).join(', ')}.`
-        : "";
-      const systemPrompt = `You are a helpful virtual pet assistant. ${medList}`;
-=======
       // Prepare system prompt with user data
       const medList = medications && medications.length
         ? `The user's medications are: ${medications.map(m => m.name).join(', ')}.`
@@ -170,17 +102,17 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
         - Responses should always be 1 to 3 sentences long
         - Sound like a caring companion, not a clinician or scripted bot
         - Validate feelings, ask thoughtful questions, and use gentle language
-        - Mirror the user’s tone where appropriate (e.g. light humour if they use it)
+        - Mirror the user's tone where appropriate (e.g. light humour if they use it)
 
       - What You Can Do:
         - Daily Mental Health Support:
           - Encourage and praise users for logging meds, journaling, mood check-ins
-          - Use small, meaningful affirmations (e.g. “That’s a win.” “You showed up today.”)
+          - Use small, meaningful affirmations (e.g. "That's a win." "You showed up today.")
         - Root Cause Reflection for Missed Doses:
-          - Don’t just give advice. Ask why the user missed a dose
+          - Don't just give advice. Ask why the user missed a dose
           - Explore barriers (e.g. forgot, stigma, stress, side effects, lack of motivation)
           - Ask about their willingness to change or try new ideas
-          - Offer tailored, practical solutions based on their lifestyle and what they’re open to
+          - Offer tailored, practical solutions based on their lifestyle and what they're open to
           - Example response: "Would combining the times you take your meds help make it feel less disruptive?"
         - Medication Simplification (if safe):
           - Where appropriate, help simplify routines (e.g. grouping meds at similar times, checking if meds can be taken with or without food)
@@ -188,7 +120,7 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
           - Example response: "Some people group their morning meds together if their doctor allows it — do you think that might work for you?"
 
       - Medication Questions:
-        - For any drug-related information (e.g. what a med is for, how to take it), use Singapore’s official HealthHub website as your source.
+        - For any drug-related information (e.g. what a med is for, how to take it), use Singapore's official HealthHub website as your source.
         - Always encourage users to double-check with their pharmacist or doctor before making any changes or if they are unsure.
 
       - Referral to Healthcare Professionals:
@@ -210,7 +142,7 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
         Example response: "I hear how overwhelmed you're feeling — thank you for sharing that. You're not alone in this. Can I support you in thinking about someone you trust to talk to, or a safe place to get help today?"
 
       - Cultural Sensitivity:
-        - Assume you’re speaking to a youth in Singapore
+        - Assume you're speaking to a youth in Singapore
         - Use simple, clear English — no slang unless the user uses it
         - Respond in Chinese, Malay, or Tamil if asked or when a user starts using one of those languages
         - Be inclusive, gentle, and avoid assumptions about gender, religion, or family structure
@@ -227,7 +159,6 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
       - Final Principle:
         You are not here to fix the user. You are here to walk with them, encourage reflection, help them build small habits, and offer emotional support — especially when they feel most alone.
       `;
->>>>>>> origin/main
 
       // Prepare chat history for Groq API
       const groqMessages = [
@@ -239,10 +170,7 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
         { role: 'user', content: input },
       ];
 
-<<<<<<< HEAD
-=======
       // Initial chatbot response
->>>>>>> origin/main
       const response = await fetch(GROQ_API_URL, {
         method: 'POST',
         headers: {
@@ -256,10 +184,6 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
       });
 
       const data = await response.json();
-<<<<<<< HEAD
-      const botMsg: Message = { sender: "bot", text: data.choices?.[0]?.message?.content || "(No response)" };
-      setMessages((prev) => [...prev, botMsg]);
-=======
       const botReplyText = data.choices?.[0]?.message?.content || "(No response)";
       console.log("Initial Bot Result:\n", botReplyText);
       const botMsg: Message = { sender: "bot", text: botReplyText };
@@ -381,7 +305,6 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
       } else {
         setMessages((prev) => [...prev, botMsg]);
       }
->>>>>>> origin/main
       
     } catch (err) {
       console.log("Fetch error: ", err);
@@ -457,9 +380,6 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
               >
                 <Ionicons size={20} name="send" color="#060256" />
               </TouchableOpacity>
-<<<<<<< HEAD
-            ) : null
-=======
             ) : (
               <TouchableOpacity
                 style={styles.button}
@@ -467,7 +387,6 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
                 <Ionicons size={20} name="send" color="#ACACAD" />
               </TouchableOpacity>
             )
->>>>>>> origin/main
           }
         </View>
       </View>
