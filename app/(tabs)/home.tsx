@@ -6,6 +6,8 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AirtableService from '../../airtable';
+import MotivationalQuoteModal from '@/components/MotivationalQuoteModal';
+import quotesData from '../../assets/quotes.json';
 
 const avatars = [
   { name: 'cat', src: require('../../assets/avatars/cat.png') },
@@ -50,6 +52,9 @@ export default function HomeTab() {
   const [medStatus, setMedStatus] = useState<{ [medName: string]: { done: boolean; timestamp: string } }>({});
   const [currentDay, setCurrentDay] = useState<string>('');
   const [isFocused, setIsFocused] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [currentQuote, setCurrentQuote] = useState('');
+
   
   // Modal state
   const [showMedDetailsModal, setShowMedDetailsModal] = useState<boolean>(false);
@@ -204,6 +209,19 @@ export default function HomeTab() {
 
   // Load medication status and check for yesterday's completion
   useEffect(() => {
+    const displayWelcomeModal = async () => {
+        const hasSeenWelcomeModal = await AsyncStorage.getItem('hasSeenWelcomeModal');
+        if (!hasSeenWelcomeModal) {
+            // Select a random quote
+            const randomIndex = Math.floor(Math.random() * quotesData.length);
+            setCurrentQuote(quotesData[randomIndex]);
+            setShowQuoteModal(true);
+            await AsyncStorage.setItem('hasSeenWelcomeModal', 'true'); // Mark as seen
+        }
+    };
+
+    displayWelcomeModal();
+
     refreshData();
   }, []);
 
@@ -407,6 +425,12 @@ export default function HomeTab() {
 
         {/* Bottom nav is handled by the tab navigator */}
       </ScrollView>
+
+      <MotivationalQuoteModal
+        visible={showQuoteModal}
+        quote={currentQuote}
+        onClose={() => setShowQuoteModal(false)}
+      />
 
       {/* Medication Details Modal */}
       <Modal
