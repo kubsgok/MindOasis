@@ -13,6 +13,18 @@ const MED_TABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${MED_TABLE_ID}`;
 const JOURNAL_TABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${JOURNAL_TABLE_ID}`;
 const PROMPT_TABLE_URL = `https://api.airtable.com/v0/${BASE_ID}/${PROMPT_TABLE_ID}`;
 
+// Function to calculate age from date of birth
+function calculateAgeFromDOB(dobStr) {
+  const dob = new Date(dobStr);
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const month_diff = today.getMonth() - dob.getMonth();
+  if (month_diff < 0 || (month_diff === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age;
+}
+
 const AirtableService = {
   /**
    * Fetch all user records
@@ -269,6 +281,45 @@ const AirtableService = {
     } catch (error) {
       console.error('Error fetching journal entries for user:', error);
       return [];
+    }
+  },
+
+  /**
+   * Get user by ID
+   */
+  getUserById: async (recordId) => {
+    try {
+      const url = `${AIRTABLE_URL}?filterByFormula=({Record ID}='${recordId}')`;
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      });
+      return response.data.records;
+    } catch (error) {
+      console.error("Error fetching user by ID:", error);
+      return [];
+    }
+  },
+
+  /**
+   * Get user details
+   */
+  getUserDetails: async (recordId) => {
+    try {
+      const records = await AirtableService.getUserById(recordId);
+      if (!records || records.length === 0) return null;
+
+      const fields = records[0].fields;
+      return {
+        name: fields.name,
+        age: calculateAgeFromDOB(fields["date of birth"]),
+        conditions: fields.Condition || "",
+      };
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+      return null;
     }
   },
 };

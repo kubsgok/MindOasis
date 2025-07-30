@@ -33,7 +33,6 @@ app.add_middleware(
 # Load environment variables
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-TESSERACT_PATH = os.getenv("TESSERACT_PATH")
 
 # Initializing LLM
 print("[APP] Initializing LLM...")
@@ -50,6 +49,7 @@ class ChatRequest(BaseModel):
     user_id: str
     message: str
     chat_history: List[Tuple[str, str]] = []
+    user_details: str
 
 def format_chat_history(chat_history: List[Tuple[str, str]]) -> List:
     """Format chat history into a string format"""
@@ -118,16 +118,18 @@ class LLMEvaluator:
                 """        "conciseness_length": "The chatbot response was lengthy, being more than 3 sentences long."\n"""
                 """    }}\n"""
                 """}}\n\n"""
-                """Your output in JSON format have to always and only contain the following keys: "emotional_tone", "helpful", "safety_concern", "conciseness_length", and "comments".\n"""
+                "Important Instructions:\n"
+                """- Your output in JSON format have to always and only contain the following keys: "emotional_tone", "helpful", "safety_concern", "conciseness_length", and "comments".\n"""
+                """- Take the following as facts: {user_details}"""
             )),
              ("human", "User message:\n{user_msg}\n\nProposed response:\n{initial_response}\n\nEvaluate the proposed response to the user's message.")
         ])
 
-    def run_evaluator_chain(self, user_msg: str, initial_response: str) -> dict:
+    def run_evaluator_chain(self, user_msg: str, initial_response: str, user_details: str) -> dict:
         print(f"[LLM EVALUATOR] Evaluating initial chatbot response...")
         try:
             chain = self.prompt | self.llm | self.parser
-            result = chain.invoke({"user_msg": user_msg, "initial_response": initial_response})
+            result = chain.invoke({"user_msg": user_msg, "initial_response": initial_response, "user_details": user_details})
             print("[LLM EVALUATOR] Evaluation result: ", result)
             return result
         except Exception as e:
@@ -190,6 +192,7 @@ async def chat(req: ChatRequest):
         user_id = req.user_id
         user_msg = req.message
         chat_history = req.chat_history
+        user_details = req.user_details
 
         print(f"[APP] Received message from {user_id}: {user_msg}")
         print(f"[APP] Chat history length: {len(chat_history)}")
@@ -204,11 +207,12 @@ async def chat(req: ChatRequest):
             "safe while building habits like medication adherence and self-awareness.\n\n"
             "Important Instructions:\n"
             "1. Personalization:\n"
-            "You remember and personalize responses based on:\n"
-            "- User’s name, age, gender\n"
+            "You remember and personalize responses based on the user's:\n"
+            "- Name and age\n"
             "- Medications and conditions\n"
             "- Personality, communication style, and general outlook\n"
-            "- Their struggles, motivators, and preferred tone\n\n"
+            "- Struggles, motivators, and preferred tone\n\n"
+            f"{user_details}"
             "2. Tone & Communication Style:\n"
             "- Use a friendly and emotionally warm tone\n"
             "- Responses should always be 1 to 3 sentences long\n"
@@ -273,7 +277,7 @@ async def chat(req: ChatRequest):
         print(f"[APP] Initial bot response: {initial_response}")
 
         # Evaluate initial chatbot response
-        evaluation_result = llm_evaluator.run_evaluator_chain(user_msg, initial_response)
+        evaluation_result = llm_evaluator.run_evaluator_chain(user_msg, initial_response, user_details)
 
         # Check if revision is needed
         needs_revision = (
