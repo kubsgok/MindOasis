@@ -5,7 +5,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { convertImageToBase64, performOCR, pickImage } from "../ocr";
+import { convertImageToBase64, performOCR, pickImage } from "../../utils/ocr";
 
 export default function MedicationsTab() {
   // Image OCR state
@@ -49,7 +49,7 @@ export default function MedicationsTab() {
     };
 
     fetchMedications();
-  }, []);
+  }, [medications]);
 
   // Opening the medications modal
   const openMedModal = (med?: typeof medications[0]) => {
@@ -259,10 +259,9 @@ export default function MedicationsTab() {
 
   // OCR function
   const handleOCR = async (source: "camera" | "gallery") => {
-    console.log("[APP OCR] Performing OCR...");
     const uri = await pickImage(source);
     if (!uri) {
-      console.error("[APP OCR] No URI retrieved");
+      // console.error("[APP OCR] No URI retrieved");
       return;
     }
 
@@ -270,13 +269,14 @@ export default function MedicationsTab() {
     setLoading(true);
 
     try {
+      console.log("[APP OCR] Performing OCR...");
       const base64Image = await convertImageToBase64(uri);
       const ocrResult = await performOCR(base64Image);
 
       console.log("Extracted text: ", ocrResult.text);
       console.log("Medication info: ", ocrResult.medInfo);
       setExtractedText(ocrResult.text);
-      const medInfo = JSON.parse(ocrResult.medInfo);
+      const medInfo = ocrResult.medInfo;
       setMedName(medInfo.medicine_name);
       setMedDosage(medInfo.dosage);
       setMedFrequency(medInfo.frequency);
