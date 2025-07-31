@@ -11,6 +11,15 @@ type Message = {
     text: string;
 };
 
+type ChatProps = {
+  medications?: any[];
+  userDetails?: {
+    name: string;
+    age: number | null;
+    conditions: string;
+  };
+}
+
 // Avatar mapping (reuse from home page)
 const avatars = [
   { name: 'cat', src: require('../assets/avatars/cat.png') },
@@ -24,18 +33,18 @@ const avatars = [
   { name: 'cat2', src: require('../assets/avatars/cat2.png') },
 ];
 
-export default function Chat({ medications: propMeds }: { medications?: any[] }) { 
+export default function Chat({ medications: propMeds, userDetails: propUserDetails }: ChatProps) { 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>("");
+  const [userName, setUserName] = useState<string>("");
+  const [userAge, setUserAge] = useState<number | null>(null);
   const [medications, setMedications] = useState<any[]>(propMeds || []);
+  const [userConditions, setUserConditions] = useState<string>("");
   const [petAvatar, setPetAvatar] = useState<any>(avatars[0].src); // default to cat
   const [petName, setPetName] = useState<string>("Pet Name"); // default text
 
   const router = useRouter();
-  // // Fetch user data
-  // useEffect(() => {
-    
-  // });
+
   // Fetch medications if not passed as prop
   useEffect(() => {
     if (!propMeds) {
@@ -53,6 +62,28 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
       })();
     }
   }, [propMeds]);
+
+  // Fetch other user details if not passed as prop
+  useEffect(() => {
+    if (!propUserDetails) {
+      (async () => {
+        try {
+          const userId = await AsyncStorage.getItem('user_id');
+          if (!userId) return;
+
+          const AirtableService = (await import('../airtable')).default;
+          const userDetails = await AirtableService.getUserDetails(userId);
+          if (!userDetails) return;
+
+          setUserName(userDetails.name);
+          setUserAge(userDetails.age);
+          setUserConditions(userDetails.conditions);
+        } catch (e) {
+          console.error('Failed to fetch user details:', e);
+        }
+      })();
+    }
+  }, [propUserDetails]);
 
   // Fetch pet avatar on mount
   useEffect(() => {
@@ -93,6 +124,13 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
       const medList = medications && medications.length
         ? `The user's medications are: ${medications.map(m => m.name).join(', ')}.`
         : "";
+      
+      const conditionsList = userConditions !== ""
+        ? `The user's conditions are: ${userConditions}.`
+        : "";
+      
+      const userDetails = `The user's name is: ${userName}.\nThe user's age is: ${userAge}.\n${medList}\n${conditionsList}\n`;
+      console.log(`User details: ${userDetails}`);
 
       const response = await fetch(`${BACKEND_API_HOST}/chatbot`, {
         method: "POST",
@@ -105,7 +143,8 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
               acc.push([cur.text, arr[i+1].text]);
             }
             return acc;
-          }, [])
+          }, []),
+          user_details: userDetails,
         }),
       });
 
@@ -114,7 +153,7 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
       setMessages((prev) => [...prev, botMsg]);
       
     } catch (err) {
-      console.log("Fetch error: ", err);
+      console.error("Fetch error: ", err);
       const errorMsg: Message = {
         sender: "bot",
         text: "Sorry, something went wrong. Please try again later.",
