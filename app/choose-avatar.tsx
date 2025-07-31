@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AirtableService from '../airtable';
 
 const avatars = [
@@ -18,6 +18,7 @@ const avatars = [
 
 export default function ChooseAvatarPage() {
   const [selected, setSelected] = useState<string | null>(null);
+  const [petName, setPetName] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
 
@@ -26,20 +27,41 @@ export default function ChooseAvatarPage() {
       setError('Please select an avatar.');
       return;
     }
+    if (!petName.trim()) {
+      setError('Please enter a name for your pet.');
+      return;
+    }
     try {
       const userId = await AsyncStorage.getItem('user_id');
       if (userId) {
-        await AirtableService.updateRecord(userId, { avatar: selected });
+        await AirtableService.updateRecord(userId, { 
+          avatar: selected,
+          name: petName.trim()
+        });
       }
       router.replace('/(tabs)/home');
     } catch (e) {
-      setError('Failed to save avatar.');
+      setError('Failed to save avatar and pet name.');
     }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Choose your avatar!</Text>
+      
+      {/* Pet Name Input */}
+      <View style={styles.nameInputContainer}>
+        <Text style={styles.nameLabel}>What's your pet's name?</Text>
+        <TextInput
+          style={styles.nameInput}
+          value={petName}
+          onChangeText={setPetName}
+          placeholder="Enter pet name..."
+          placeholderTextColor="#999"
+          maxLength={20}
+        />
+      </View>
+      
       <View style={styles.grid}>
         {avatars.map((avatar, idx) => (
           <TouchableOpacity
@@ -121,5 +143,27 @@ const styles = StyleSheet.create({
     color: '#ffdddd',
     textAlign: 'center',
     marginBottom: 12,
+  },
+  nameInputContainer: {
+    width: '100%',
+    marginBottom: 32,
+  },
+  nameLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: 8,
+    textAlign: 'left',
+    width: '100%',
+  },
+  nameInput: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
 }); 

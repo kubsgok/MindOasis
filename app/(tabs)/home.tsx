@@ -1,12 +1,12 @@
+import MotivationalQuoteModal from '@/components/MotivationalQuoteModal';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import dayjs from 'dayjs';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AirtableService from '../../airtable';
-import MotivationalQuoteModal from '@/components/MotivationalQuoteModal';
 import quotesData from '../../assets/quotes.json';
 
 const avatars = [
@@ -59,6 +59,8 @@ export default function HomeTab() {
   // Modal state
   const [showMedDetailsModal, setShowMedDetailsModal] = useState<boolean>(false);
   const [selectedMedication, setSelectedMedication] = useState<Medication | null>(null);
+  const [showNameEditModal, setShowNameEditModal] = useState<boolean>(false);
+  const [editingPetName, setEditingPetName] = useState<string>('');
 
   // Health model constants
   const DAILY_REWARD = 10; // Points for perfect adherence
@@ -315,6 +317,34 @@ export default function HomeTab() {
     setSelectedMedication(null);
   };
 
+  // Handler for opening name edit modal
+  const openNameEditModal = () => {
+    setEditingPetName(user?.name || '');
+    setShowNameEditModal(true);
+  };
+
+  // Handler for closing name edit modal
+  const closeNameEditModal = () => {
+    setShowNameEditModal(false);
+    setEditingPetName('');
+  };
+
+  // Handler for saving pet name
+  const savePetName = async () => {
+    if (!editingPetName.trim()) return;
+    
+    try {
+      const userId = await AsyncStorage.getItem('user_id');
+      if (userId) {
+        await AirtableService.updateRecord(userId, { name: editingPetName.trim() });
+        setUser(prev => prev ? { ...prev, name: editingPetName.trim() } : null);
+      }
+      closeNameEditModal();
+    } catch (error) {
+      console.error('Failed to save pet name:', error);
+    }
+  };
+
   // Check if it's end of day (11:59 PM) and update health accordingly
   const checkEndOfDayHealthUpdate = async () => {
     const now = new Date();
@@ -374,7 +404,10 @@ export default function HomeTab() {
           <TouchableOpacity onPress={() => router.push('../chat')} style={styles.chatIcon}>
             <Ionicons name="chatbubble-ellipses" size={40} color="#060256" />
           </TouchableOpacity>
-          <Text style={styles.petNameBelow}>{user?.name || 'Tommy'}</Text>
+          <TouchableOpacity onPress={openNameEditModal} style={styles.petNameContainer}>
+            <Text style={styles.petNameBelow}>{user?.name || 'Tommy'}</Text>
+            <Ionicons name="pencil" size={16} color="white" style={styles.editIcon} />
+          </TouchableOpacity>
         </View>
 
                 {/* Medications section */}
@@ -515,6 +548,52 @@ export default function HomeTab() {
                 </View>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Pet Name Edit Modal */}
+      <Modal
+        visible={showNameEditModal}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContentContainer}>
+            {/* Modal Header */}
+            <View style={styles.modalHeaderContainer}>
+              <Text style={styles.modalTitle}>Edit Pet Name</Text>
+            </View>
+
+            {/* Modal Body */}
+            <View style={styles.nameEditContainer}>
+              <Text style={styles.nameEditLabel}>Pet Name:</Text>
+              <TextInput
+                style={styles.nameEditInput}
+                value={editingPetName}
+                onChangeText={setEditingPetName}
+                placeholder="Enter pet name..."
+                placeholderTextColor="#999"
+                maxLength={20}
+                autoFocus
+              />
+            </View>
+
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity 
+                style={[styles.modalButton, { backgroundColor: '#4CAF50' }]} 
+                onPress={savePetName}
+              >
+                <Text style={styles.modalButtonText}>Save</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.closeButton} 
+                onPress={closeNameEditModal}
+              >
+                <Text style={styles.closeButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -749,12 +828,12 @@ const styles = StyleSheet.create({
   overdueHeader: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#d32f2f',
+    color: 'black',
     marginRight: 8,
   },
   overdueSubHeader: {
     fontSize: 14,
-    color: '#d32f2f',
+    color: '#666',
     fontStyle: 'italic',
   },
   overdueRow: {
@@ -772,5 +851,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
     marginBottom: 16,
+  },
+  petNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+  },
+  editIcon: {
+    marginLeft: 8,
+  },
+  nameEditContainer: {
+    marginBottom: 20,
+  },
+  nameEditLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  nameEditInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    color: '#333',
+    backgroundColor: '#f9f9f9',
   },
 });

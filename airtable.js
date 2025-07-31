@@ -256,7 +256,10 @@ const AirtableService = {
    */
   getAllJournalEntriesForUser: async (userId) => {
     try {
-      // First, let's try to get all entries without filtering to see what we get
+      console.log('=== JOURNAL ENTRIES DEBUG ===');
+      console.log('Current user ID:', userId);
+      
+      // Get all entries to see the field structure
       const url = `${JOURNAL_TABLE_URL}`;
       const response = await axios.get(url, {
         headers: {
@@ -264,8 +267,23 @@ const AirtableService = {
           'Content-Type': 'application/json',
         },
       });
-      console.log('All journal entries (no filter):', JSON.stringify(response.data.records, null, 2));
-      return response.data.records;
+      
+      console.log('All journal entries:', response.data.records.length, 'total entries');
+      
+      if (response.data.records.length > 0) {
+        console.log('Sample journal entry fields:', Object.keys(response.data.records[0].fields));
+        console.log('Sample journal entry:', JSON.stringify(response.data.records[0].fields, null, 2));
+        
+        // For now, return all entries since we need to see the actual data structure
+        // This will help us understand how the User field is stored
+        console.log('Returning all entries for debugging');
+        console.log('=== END JOURNAL DEBUG ===');
+        return response.data.records;
+      }
+      
+      console.log('No entries found');
+      console.log('=== END JOURNAL DEBUG ===');
+      return [];
     } catch (error) {
       console.error('Error fetching journal entries for user:', error);
       return [];

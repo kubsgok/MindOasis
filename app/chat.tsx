@@ -29,6 +29,7 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
   const [input, setInput] = useState<string>("");
   const [medications, setMedications] = useState<any[]>(propMeds || []);
   const [petAvatar, setPetAvatar] = useState<any>(avatars[0].src); // default to cat
+  const [petName, setPetName] = useState<string>("Pet Name"); // default text
 
   const router = useRouter();
   // // Fetch user data
@@ -62,9 +63,16 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
         const AirtableService = (await import('../airtable')).default;
         const users: { id: string; fields: any }[] = await AirtableService.getAllUsers();
         const userRecord = users.find((u: { id: string; fields: any }) => u.id === userId);
-        if (userRecord && userRecord.fields.avatar) {
-          const avatarObj = avatars.find((a) => a.name === userRecord.fields.avatar);
-          setPetAvatar(avatarObj ? avatarObj.src : avatars[0].src);
+        if (userRecord) {
+          // Set pet avatar
+          if (userRecord.fields.avatar) {
+            const avatarObj = avatars.find((a) => a.name === userRecord.fields.avatar);
+            setPetAvatar(avatarObj ? avatarObj.src : avatars[0].src);
+          }
+          // Set pet name
+          if (userRecord.fields.name) {
+            setPetName(userRecord.fields.name);
+          }
         }
       } catch (e) {
         // fallback to default
@@ -128,7 +136,7 @@ export default function Chat({ medications: propMeds }: { medications?: any[] })
             </TouchableOpacity>
 
             <View style={styles.titleContainer}>
-              <Text style={styles.titleText}>Pet Name</Text>
+              <Text style={styles.titleText}>{petName}</Text>
             </View>
 
             <TouchableOpacity 
