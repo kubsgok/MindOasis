@@ -1,6 +1,6 @@
-# MindOasis
+# Nami
 
-A cross‑platform mobile app built with **Expo Router** and backed by a Python/FastAPI + Airtable backend. MindOasis helps users journal, track medications, manage events, and connect with peers through a “JumBuddy” feature.
+A cross‑platform mobile app built with **Expo Router** and backed by a Python/FastAPI + Airtable backend. Nami helps users journal, track medications, manage events, and connect with peers through a “JumBuddy” feature.
 
 ---
 
@@ -51,7 +51,7 @@ A cross‑platform mobile app built with **Expo Router** and backed by a Python/
 ## 📁 Project Structure
 
 ```
-MindOasis-main/
+Nami-main/
 ├─ app/                 # Expo Router pages (tabs)
 │  └─ (tabs)/
 │     ├─ _layout.tsx    # Tab navigator
@@ -89,7 +89,7 @@ MindOasis-main/
 
 ```bash
 git clone <your-repo-url>
-cd MindOasis-main
+cd Nami-main
 
 # Frontend deps
 npm install  
